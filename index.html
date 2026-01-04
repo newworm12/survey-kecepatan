@@ -259,6 +259,7 @@ db.ref("sessions/" + sessionId).set({
 function joinSession(){
   const id=joinInput.value.trim();
   if(!id) return alert("Masukkan session ID");
+  
   db.ref("sessions/"+id).once("value").then(s=>{
     if(!s.exists()) return alert("Session tidak ada");
     sessionId=id;
@@ -272,21 +273,24 @@ function activate(){
   stopwatch.classList.remove("locked");
 
   db.ref("sessions/"+sessionId).on("value", s => {
-    const d = s.val();
-    if (!d) return;
+  const d = s.val();
+  if (!d) return;
 
-    statusEl.innerText = "Status: " + d.status;
+  statusEl.innerText = "Status: " + d.status;
 
-    // 🔽 TARUH DI SINI
-    if (d.vehicle) {
-      vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
-    }
-    if (d.status === "RUNNING") {
-      vehicleSelect.disabled = true;
-    }
-    if (d.status === "IDLE" && role.value === "A") {
-      vehicleSelect.disabled = false;
-    }
+  // ===== INFO KENDARAAN (SINKRON A → B) =====
+  if (d.vehicle && d.vehicle !== "") {
+    vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
+  } else {
+    vehicleInfo.innerText = "Menunggu kendaraan dari Petugas A";
+  }
+  // 🔒 INI PENTING
+  if (role.value === "B") {
+    vehicleSelect.disabled = true;
+  } else {
+    vehicleSelect.disabled = d.status === "RUNNING";
+  }
+
 
     // ===== LOGIKA TIMER =====
     // ===== LOGIKA TIMER =====
