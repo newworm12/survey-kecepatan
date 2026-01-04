@@ -331,9 +331,26 @@ if (d.status === "RUNNING") {
   btnStop.disabled = role.value !== "B";
 
   // sinkron waktu (hanya maju)
-  if (d.start_time && d.start_time > localStartTime) {
+  if (d.status === "RUNNING") {
+  btnStart.disabled = true;
+  btnStop.disabled = role.value !== "B";
+
+  // Petugas A sudah jalan sendiri
+  if (role.value === "A") return;
+
+  // Petugas B ikut waktu dari A
+  if (!timerRunning && d.start_time) {
+    timerRunning = true;
     localStartTime = d.start_time;
+
+    clearInterval(timer);
+    timer = setInterval(() => {
+      const diff = Date.now() - localStartTime;
+      timeEl.innerText = (diff / 1000).toFixed(3);
+    }, 16);
   }
+}
+
 
   // 🚫 JANGAN start timer dari listener untuk Petugas A
   if (role.value === "A") return;
@@ -384,22 +401,21 @@ if (d.status === "STOPPED") {
 function start(){
   if(role.value !== "A") return;
 
-  // 🔥 optimistic UI (hilangkan delay di A)
   localStartTime = Date.now();
   timerRunning = true;
 
   clearInterval(timer);
   timer = setInterval(() => {
     const diff = Date.now() - localStartTime;
-    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-  }, 50);
+    timeEl.innerText = (diff / 1000).toFixed(3);
+  }, 16); // 60 FPS
 
-  // kirim ke Firebase
   db.ref("sessions/"+sessionId).update({
     status: "RUNNING",
-    start_time: firebase.database.ServerValue.TIMESTAMP
+    start_time: localStartTime
   });
 }
+
 
 
 
