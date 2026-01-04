@@ -119,20 +119,28 @@ function joinSession(){
 /* ===== START ===== */
 function start(){
   if(!sessionId) return;
-  db.ref("sessions/"+sessionId).update({
-    status:"RUNNING",
-    start_time: firebase.database.ServerValue.TIMESTAMP
+  db.ref("sessions/"+sessionId).once("value").then(s=>{
+    if(s.val().status === "RUNNING") return;
+    db.ref("sessions/"+sessionId).update({
+      status:"RUNNING",
+      start_time: firebase.database.ServerValue.TIMESTAMP
+    });
   });
 }
+
 
 /* ===== STOP ===== */
 function stop(){
   if(!sessionId) return;
-  db.ref("sessions/"+sessionId).update({
-    status:"STOPPED",
-    stop_time: firebase.database.ServerValue.TIMESTAMP
+  db.ref("sessions/"+sessionId).once("value").then(s=>{
+    if(s.val().status !== "RUNNING") return;
+    db.ref("sessions/"+sessionId).update({
+      status:"STOPPED",
+      stop_time: firebase.database.ServerValue.TIMESTAMP
+    });
   });
 }
+
 
 /* ===== REALTIME ===== */
 function listen(){
