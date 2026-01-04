@@ -226,40 +226,42 @@ function activate(){
   stopwatch.classList.remove("locked");
 
   db.ref("sessions/"+sessionId).on("value", s => {
-  const d = s.val();
-  if (!d) return;
+    const d = s.val();
+    if (!d) return;
 
-  statusEl.innerText = "Status: " + d.status;
+    statusEl.innerText = "Status: " + d.status;
 
-  if (d.status === "IDLE") {
-    running = false;
-    clearInterval(timer);
-    timer = null;
-    timeEl.innerText = "0.000";
-    speedEl.innerText = "0 km/jam";
-    btnStart.disabled = role.value !== "A";
-    btnStop.disabled = true;
-  }
+    if (d.status === "IDLE") {
+      running = false;
+      clearInterval(timer);
+      timer = null;
+      timeEl.innerText = "0.000";
+      speedEl.innerText = "0 km/jam";
+      btnStart.disabled = role.value !== "A";
+      btnStop.disabled = true;
+    }
 
-  if (d.status === "RUNNING") {
-    btnStart.disabled = true;
-    btnStop.disabled = role.value !== "B";
-  }
+    if (d.status === "RUNNING") {
+      btnStart.disabled = true;
+      btnStop.disabled = role.value !== "B";
+    }
 
-  if (d.status === "STOPPED") {
-    running = false;
-    clearInterval(timer);
-    timer = null;
+    if (d.status === "STOPPED") {
+      running = false;
+      clearInterval(timer);
+      timer = null;
 
-    const dur = d.stop_time - d.start_time;
-    timeEl.innerText = (dur / 1000).toFixed(3);
-    speedEl.innerText =
-      ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
+      const dur = d.stop_time - d.start_time;
+      timeEl.innerText = (dur / 1000).toFixed(3);
+      speedEl.innerText =
+        ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
 
-    btnStart.disabled = true;
-    btnStop.disabled = true;
-  }
-});
+      btnStart.disabled = true;
+      btnStop.disabled = true;
+    }
+  });
+} // ✅ INI YANG KURANG
+
 
 
 
