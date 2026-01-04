@@ -15,6 +15,21 @@
   background:#4caf50 !important;
   color:#000 !important;
 }
+#controlBar{
+  position: relative;
+  z-index: 2;
+}
+
+#stopwatch{
+  position: relative;
+  z-index: 1;
+  margin-top: 12px;
+}
+
+.stopwatch.locked{
+  opacity: 0.35;
+  pointer-events: none;
+}
 
   body{
     margin:0;
@@ -90,43 +105,42 @@
 <body>
 
 <div class="card">
-  <h2>Survey Kecepatan</h2>
 
-  <select id="role">
-    <option value="A">Peran A (START)</option>
-    <option value="B">Peran B (STOP)</option>
-  </select>
-<input id="petugas" placeholder="Nama Petugas">
+  <!-- ===== CONTROL BAR ===== -->
+  <div id="controlBar">
+    <select id="role">
+      <option value="A">Peran A (START)</option>
+      <option value="B">Peran B (STOP)</option>
+    </select>
 
+    <input id="petugas" placeholder="Nama Petugas">
 
-<!-- AREA A -->
-<div id="areaA" style="display:none">
-  <button onclick="generateCode()">Generate Kode (A)</button>
-  <div class="status" id="kodeA" style="font-size:20px; font-weight:bold; margin-top:8px;"></div>
+    <!-- AREA A -->
+    <div id="areaA" style="display:none">
+      <button onclick="generateCode()">Generate Kode (A)</button>
+      <div id="kodeA"></div>
+    </div>
+
+    <!-- AREA B -->
+    <div id="areaB" style="display:none">
+      <input id="pairInput" placeholder="Masukkan Kode (B)">
+      <button id="pairBtn" onclick="pairAsB()">PAIR (B)</button>
+    </div>
+
+    <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
+  </div>
+
+  <!-- ===== STOPWATCH ===== -->
+  <div id="stopwatch" class="stopwatch locked">
+    <div id="time">0.000</div>
+    <div id="speed">0 km/jam</div>
+    <button onclick="start()">START</button>
+    <button onclick="stop()">STOP</button>
+  </div>
+
+  <div id="status">Status: IDLE</div>
 </div>
 
-<!-- AREA A -->
-<div id="areaA" style="display:none">
-  <button onclick="generateCode()">Generate Kode (A)</button>
-  <div id="kodeA"></div>
-</div>
-
-<!-- AREA B -->
-<div id="areaB" style="display:none">
-  <input id="pairInput">
-  <button onclick="pairAsB()">PAIR (B)</button>
-</div>
-
-<input id="distance" type="number" value="50">
-
-<div id="stopwatch" class="stopwatch locked">
-  <div id="time">0.000</div>
-  <div id="speed">0 km/jam</div>
-  <button onclick="start()">START</button>
-  <button onclick="stop()">STOP</button>
-</div>
-
-<div id="status">Status: IDLE</div>
 
   
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -164,7 +178,8 @@ role.onchange = () => {
   areaA.style.display = role.value === "A" ? "block" : "none";
   areaB.style.display = role.value === "B" ? "block" : "none";
 };
-role.onchange(); // ← INI KUNCINYA
+role.onchange(); // ← WAJIB
+
 /* ========= ACTION ========= */
 window.generateCode = () => {
   if (!petugas.value.trim()) return alert("Isi nama A");
@@ -184,25 +199,44 @@ window.generateCode = () => {
 };
 
 window.pairAsB = () => {
+  if (!pairInput.value.trim())
+  return alert("Masukkan kode pairing");
+
   if (!petugas.value.trim()) return alert("Isi nama B");
 
   ref.once("value").then(s => {
     const d = s.val();
-    if (d.pairing_status !== "OPEN") return alert("Pairing terkunci");
-    if (pairInput.value !== d.pairing_code) return alert("Kode salah");
+    if (!d) return alert("Data tidak ada");
+
+    if (d.pairing_status !== "OPEN")
+      return alert("Pairing sudah terkunci");
+
+    if (pairInput.value !== d.pairing_code)
+      return alert("Kode salah");
 
     ref.update({
       pair_B: petugas.value.trim(),
       pairing_status: "LOCKED"
+    }).then(() => {
+      const btn = document.getElementById("pairBtn");
+      btn.classList.add("control-ok");
+      btn.innerText = "PAIRED";
+      btn.disabled = true;
     });
   });
 };
 
 window.start = () => {
+  if (role.value !== "A")
+    return alert("START hanya untuk A");
+
   ref.once("value").then(s => {
     const d = s.val();
     if (d.pairing_status !== "LOCKED")
-      return alert("Pairing belum selesai");
+      return alert("Belum pairing");
+
+    if (d.status === "RUNNING")
+      return;
 
     ref.update({
       status: "RUNNING",
@@ -211,11 +245,18 @@ window.start = () => {
   });
 };
 
-
 window.stop = () => {
-  ref.update({
-    status: "STOPPED",
-    stop_time: firebase.database.ServerValue.TIMESTAMP
+  if (role.value !== "B")
+    return alert("STOP hanya untuk B");
+
+  ref.once("value").then(s=>{
+    const d = s.val();
+    if (d.status !== "RUNNING") return;
+
+    ref.update({
+      status: "STOPPED",
+      stop_time: firebase.database.ServerValue.TIMESTAMP
+    });
   });
 };
 
@@ -226,22 +267,49 @@ ref.on("value", s => {
 
   statusEl.innerText = "Status: " + d.status;
 
-  // Pairing selesai → aktifkan stopwatch
-  if (d.pairing_status === "LOCKED") {
-    stopwatch.classList.remove("locked");
-
-    // Bar B jadi hijau & terkunci
-    if (role.value === "B") {
-      areaB.classList.add("control-ok");
-    }
+  // ❌ Tolak device asing
+  if (
+    role.value === "A" &&
+    d.pair_A &&
+    d.pair_A !== petugas.value.trim()
+  ) {
+    alert("Device ini bukan A yang sah");
+    location.reload();
+    return;
   }
 
-  // Bar A hijau saat generate
-  if (d.pairing_status === "OPEN" && role.value === "A") {
-    kodeA.classList.add("control-ok");
+  if (
+    role.value === "B" &&
+    d.pair_B &&
+    d.pair_B !== petugas.value.trim()
+  ) {
+    alert("Device ini bukan B yang sah");
+    location.reload();
+    return;
   }
 
-  // Stopwatch logic
+  /* ===== PAIRING SELESAI ===== */
+ /* ===== PAIRING SELESAI ===== */
+if (d.pairing_status === "LOCKED") {
+  // buka stopwatch
+  stopwatch.classList.remove("locked");
+
+  // ===== ROLE B =====
+  if (role.value === "B") {
+    const btn = document.getElementById("pairBtn");
+    btn.disabled = true;
+    btn.classList.add("control-ok");
+    btn.innerText = "PAIRED";
+  }
+
+  // ===== ROLE A =====
+  if (role.value === "A") {
+    const genBtn = areaA.querySelector("button");
+    if (genBtn) genBtn.disabled = true;
+  }
+}
+
+  /* ===== STOPWATCH RUNNING ===== */
   if (d.status === "RUNNING") {
     clearInterval(timer);
     timer = setInterval(() => {
@@ -250,20 +318,24 @@ ref.on("value", s => {
     }, 50);
   }
 
+  /* ===== STOPPED ===== */
   if (d.status === "STOPPED") {
     clearInterval(timer);
     const dur = d.stop_time - d.start_time;
     timeEl.innerText = (dur / 1000).toFixed(3);
+
     speedEl.innerText =
       ((d.distance_m / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
   }
 
+  /* ===== RESET ===== */
   if (d.status === "IDLE") {
     clearInterval(timer);
     timeEl.innerText = "0.000";
     speedEl.innerText = "0 km/jam";
   }
 });
+
 
 </script>
 
