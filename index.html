@@ -188,7 +188,7 @@ firebase.initializeApp({
   
 let localStartTime = 0;
 let timer = null;
-let running = false;
+let timerRunning = false;
 const db = firebase.database();
 
 const btnStart = document.getElementById("btnStart");
@@ -295,27 +295,36 @@ function activate(){
 if (d.status === "IDLE") {
   clearInterval(timer);
   timer = null;
+  timerRunning = false;
+
   timeEl.innerText = "0.000";
   speedEl.innerText = "0 km/jam";
   btnStart.disabled = role.value !== "A";
   btnStop.disabled = true;
 }
 
+
 if (d.status === "RUNNING") {
   btnStart.disabled = true;
   btnStop.disabled = role.value !== "B";
 
-  clearInterval(timer);
-  timer = setInterval(() => {
-    if (!d.start_time) return;
-    const diff = Date.now() - d.start_time;
-    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-  }, 50);
+  if (!timerRunning) {
+    timerRunning = true;
+
+    timer = setInterval(() => {
+      if (!d.start_time) return;
+      const diff = Date.now() - d.start_time;
+      timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
+    }, 50);
+  }
 }
+
 
 if (d.status === "STOPPED") {
   clearInterval(timer);
   timer = null;
+  timerRunning = false;
+
 
   const dur = d.stop_time - d.start_time;
   timeEl.innerText = (dur / 1000).toFixed(3);
