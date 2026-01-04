@@ -261,53 +261,35 @@ window.stop = () => {
 };
 
 /* ========= REALTIME ========= */
-ref.on("value", s => {
+ref.on("value", s=>{
   const d = s.val();
-  if (!d) return;
+  if(!d) return;
 
   statusEl.innerText = "Status: " + d.status;
 
-  // ❌ Tolak device asing
-  if (
-    role.value === "A" &&
-    d.pair_A &&
-    d.pair_A !== petugas.value.trim()
-  ) {
-    alert("Device ini bukan A yang sah");
-    location.reload();
-    return;
+  if(d.paired){
+    stopwatch.classList.remove("locked");
+  } else {
+    stopwatch.classList.add("locked");
   }
 
-  if (
-    role.value === "B" &&
-    d.pair_B &&
-    d.pair_B !== petugas.value.trim()
-  ) {
-    alert("Device ini bukan B yang sah");
-    location.reload();
-    return;
+  if(d.status === "RUNNING"){
+    clearInterval(timer);
+    timer = setInterval(()=>{
+      timeEl.innerText =
+        ((Date.now() - d.start_time)/1000).toFixed(3);
+    },50);
   }
 
-  /* ===== PAIRING SELESAI ===== */
- /* ===== PAIRING SELESAI ===== */
-if (d.pairing_status === "LOCKED") {
-  // buka stopwatch
-  stopwatch.classList.remove("locked");
-
-  // ===== ROLE B =====
-  if (role.value === "B") {
-    const btn = document.getElementById("pairBtn");
-    btn.disabled = true;
-    btn.classList.add("control-ok");
-    btn.innerText = "PAIRED";
+  if(d.status === "STOPPED"){
+    clearInterval(timer);
+    const dur = d.stop_time - d.start_time;
+    timeEl.innerText = (dur/1000).toFixed(3);
+    speedEl.innerText =
+      ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
   }
+});
 
-  // ===== ROLE A =====
-  if (role.value === "A") {
-    const genBtn = areaA.querySelector("button");
-    if (genBtn) genBtn.disabled = true;
-  }
-}
 
   /* ===== STOPWATCH RUNNING ===== */
   if (d.status === "RUNNING") {
@@ -335,6 +317,42 @@ if (d.pairing_status === "LOCKED") {
     speedEl.innerText = "0 km/jam";
   }
 });
+function pairAsB(){
+  if(!petugas.value.trim()) return alert("Isi nama B");
+  if(!pairInput.value.trim()) return alert("Masukkan kode");
+
+  ref.once("value").then(s=>{
+    const d = s.val();
+    if(!d) return alert("Belum ada session");
+    if(d.paired) return alert("Sudah ter-pair");
+    if(pairInput.value !== d.code) return alert("Kode salah");
+
+    ref.update({
+      paired: true,
+      B: petugas.value.trim()
+    });
+  });
+}
+
+function generateCode(){
+  if(!petugas.value.trim()) return alert("Isi nama A");
+
+  const code = Math.random().toString(36).substr(2,4).toUpperCase();
+
+  ref.set({
+    code: code,
+    paired: false,
+    A: petugas.value.trim(),
+    B: "",
+    status: "IDLE",
+    start_time: 0,
+    stop_time: 0,
+    distance: Number(distance.value)
+  });
+
+  kodeA.innerText = "KODE: " + code;
+}
+
 
 
 </script>
