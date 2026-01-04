@@ -205,6 +205,24 @@ const speedEl=document.getElementById("speed");
 const statusEl=document.getElementById("status");
 const surveyorInput = document.getElementById("surveyor");
 
+// ===== SINKRON GANTI KENDARAAN (PETUGAS A) =====
+vehicleSelect.addEventListener("change", () => {
+  if (role.value !== "A") return;
+  if (!sessionId) return;
+
+  db.ref("sessions/" + sessionId).once("value").then(s => {
+    const d = s.val();
+    if (!d) return;
+
+    // hanya boleh ganti kendaraan saat IDLE
+    if (d.status !== "IDLE") return;
+
+    db.ref("sessions/" + sessionId).update({
+      vehicle: vehicleSelect.value
+    });
+  });
+});
+  
 // load otomatis
 surveyorInput.value = localStorage.getItem("surveyor") || "";
 
