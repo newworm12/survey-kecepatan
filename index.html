@@ -237,16 +237,23 @@ function activate(){
       speedEl.innerText = "0 km/jam";
     }
 
-    if(d.status === "RUNNING"){
+    if (d.status === "RUNNING") {
   btnStart.disabled = true;
   btnStop.disabled  = role.value !== "B";
 
+  // 🚨 cegah start_time belum siap
+  if (!d.start_time || d.start_time <= 0) {
+    timeEl.innerText = "0.000";
+    return;
+  }
+
   clearInterval(timer);
   timer = setInterval(() => {
-    timeEl.innerText =
-      ((Date.now() - d.start_time) / 1000).toFixed(3);
+    const diff = Date.now() - d.start_time;
+    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
   }, 50);
 }
+
 
 
     if(d.status === "STOPPED"){
