@@ -330,30 +330,28 @@ if (d.status === "RUNNING") {
   btnStart.disabled = true;
   btnStop.disabled = role.value !== "B";
 
-  // 🔒 sinkron hanya jika waktu server LEBIH BESAR
-  if (
-    timerRunning &&
-    d.start_time &&
-    d.start_time > localStartTime
-  ) {
+  // 🔒 SINKRON WAKTU (hanya maju)
+  if (d.start_time && d.start_time > localStartTime) {
     localStartTime = d.start_time;
   }
 
+  // 🚫 PETUGAS A JANGAN START TIMER DARI LISTENER
+  if (role.value === "A") return;
+
+  // ✅ PETUGAS B START TIMER DARI LISTENER
   if (!timerRunning) {
     timerRunning = true;
 
-    // pakai waktu lokal dulu
-    localStartTime = Date.now();
+    localStartTime = d.start_time || Date.now();
 
     clearInterval(timer);
     timer = setInterval(() => {
       const diff = Date.now() - localStartTime;
-
-      // ❗ CLAMP: tidak boleh negatif
       timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
     }, 50);
   }
 }
+
 
 
 
