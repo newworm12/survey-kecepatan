@@ -160,7 +160,7 @@ firebase.initializeApp({
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-
+let localStartTime = 0;
 const db = firebase.database();
 let sessionId=null,timer=null;
 const btnStart = document.getElementById("btnStart");
@@ -241,18 +241,19 @@ function activate(){
   btnStart.disabled = true;
   btnStop.disabled  = role.value !== "B";
 
-  // 🚨 cegah start_time belum siap
-  if (!d.start_time || d.start_time <= 0) {
-    timeEl.innerText = "0.000";
-    return;
-  }
-
   clearInterval(timer);
+
   timer = setInterval(() => {
-    const diff = Date.now() - d.start_time;
+    // 🔥 pakai localStartTime dulu
+    const baseTime = d.start_time && d.start_time > 0
+      ? d.start_time
+      : localStartTime;
+
+    const diff = Date.now() - baseTime;
     timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
   }, 50);
 }
+
 
 
 
@@ -273,14 +274,19 @@ function activate(){
 /* ===== START ===== */
 function start(){
   if(role.value!=="A") return alert("START hanya Petugas A");
+
+  localStartTime = Date.now(); // ⬅️ START LANGSUNG DI UI
+
   db.ref("sessions/"+sessionId).once("value").then(s=>{
     if(s.val().status==="RUNNING") return;
+
     db.ref("sessions/"+sessionId).update({
       status:"RUNNING",
-      start_time:firebase.database.ServerValue.TIMESTAMP
+      start_time: firebase.database.ServerValue.TIMESTAMP
     });
   });
 }
+
 
 /* ===== STOP ===== */
 function stop(){
