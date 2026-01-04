@@ -330,16 +330,25 @@ if (d.status === "RUNNING") {
   btnStart.disabled = true;
   btnStop.disabled = role.value !== "B";
 
+  // 🔥 SINKRON ULANG KE WAKTU SERVER (1 BARIS LOGIKA INTI)
+  if (timerRunning && d.start_time && Math.abs(d.start_time - localStartTime) > 50) {
+    localStartTime = d.start_time;
+  }
+
   if (!timerRunning) {
     timerRunning = true;
 
+    // kalau timer belum jalan, pakai waktu server
+    localStartTime = d.start_time || Date.now();
+
+    clearInterval(timer);
     timer = setInterval(() => {
-      if (!d.start_time) return;
-      const diff = Date.now() - d.start_time;
+      const diff = Date.now() - localStartTime;
       timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
     }, 50);
   }
 }
+
 
 
 if (d.status === "STOPPED") {
@@ -369,12 +378,24 @@ if (d.status === "STOPPED") {
 function start(){
   if(role.value !== "A") return;
 
+  const now = Date.now(); // waktu lokal
+
+  // 🔥 JALANKAN TIMER LANGSUNG (tanpa nunggu Firebase)
+  localStartTime = now;
+  timerRunning = true;
+
+  clearInterval(timer);
+  timer = setInterval(() => {
+    const diff = Date.now() - localStartTime;
+    timeEl.innerText = (diff / 1000).toFixed(3);
+  }, 50);
+
+  // 🔥 BARU KIRIM KE FIREBASE
   db.ref("sessions/"+sessionId).update({
     status: "RUNNING",
     start_time: firebase.database.ServerValue.TIMESTAMP
   });
 }
-
 
 
 
