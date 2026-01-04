@@ -167,7 +167,7 @@ button{font-weight:600;cursor:pointer}
  <div id="vehicleInfo" style="margin-top:6px;color:#aaa"></div>
 
 
-  <div id="status">Status: -</div>
+ 
 </div>
 
 
@@ -212,11 +212,15 @@ surveyorInput.addEventListener("input", () => {
   localStorage.setItem("surveyor", surveyorInput.value.trim());
 });
 
-role.onchange=()=>{
-  areaA.style.display=role.value==="A"?"block":"none";
-  areaB.style.display=role.value==="B"?"block":"none";
+role.onchange = () => {
+  areaA.style.display = role.value === "A" ? "block" : "none";
+  areaB.style.display = role.value === "B" ? "block" : "none";
+
+  // 🔒 kunci kendaraan untuk Petugas B
+  vehicleSelect.disabled = role.value === "B";
 };
 role.onchange();
+
 
 /* ===== CREATE ===== */
 function createSession(){
@@ -286,9 +290,17 @@ function activate(){
     }
 
     if (d.status === "RUNNING") {
-      btnStart.disabled = true;
-      btnStop.disabled = role.value !== "B";
-    }
+  btnStart.disabled = true;
+  btnStop.disabled = role.value !== "B";
+
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (!d.start_time) return;
+    const diff = Date.now() - d.start_time;
+    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
+  }, 50);
+}
+
 
     if (d.status === "STOPPED") {
       running = false;
