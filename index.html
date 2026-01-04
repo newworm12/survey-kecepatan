@@ -87,7 +87,8 @@
     <option value="A">Peran A (START)</option>
     <option value="B">Peran B (STOP)</option>
   </select>
-<input id="name" placeholder="Nama Petugas">
+<input id="petugas" placeholder="Nama Petugas">
+
 
 <!-- AREA A -->
 <div id="areaA" style="display:none">
@@ -116,7 +117,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-/* ================= FIREBASE CONFIG ================= */
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   authDomain: "stopwatch-survey.firebaseapp.com",
@@ -130,29 +131,69 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("survey_speed");
-/* =================================================== */
+
+/* ================= DOM ================= */
+const role = document.getElementById("role");
+const petugas = document.getElementById("petugas");
+const distance = document.getElementById("distance");
+const pairInput = document.getElementById("pairInput");
+
+const areaA = document.getElementById("areaA");
+const areaB = document.getElementById("areaB");
+const kodeA = document.getElementById("kodeA");
+
+const statusEl = document.getElementById("status");
+const timeEl = document.getElementById("time");
+const speedEl = document.getElementById("speed");
 
 let timer = null;
 
-/* ================= BUTTON LOGIC ================= */
+/* ================= ROLE UI ================= */
+function updateRoleUI(){
+  if(role.value === "A"){
+    areaA.style.display = "block";
+    areaB.style.display = "none";
+  } else {
+    areaA.style.display = "none";
+    areaB.style.display = "block";
+  }
+}
+role.addEventListener("change", updateRoleUI);
+updateRoleUI();
+
+/* ================= ACTIONS ================= */
+function generateCode(){
+  if(role.value !== "A") return;
+  if(!petugas.value.trim()) return alert("Isi nama petugas A");
+
+  const jarak = Number(distance.value);
+  if(!jarak || jarak <= 0) return alert("Jarak tidak valid");
+
+  const code = Math.random().toString(36).substring(2,6).toUpperCase();
+
+  ref.set({
+    status: "IDLE",
+    pairing_code: code,
+    petugas_A: petugas.value.trim(),
+    petugas_B: "",
+    start_time: 0,
+    stop_time: 0,
+    duration_ms: 0,
+    distance_m: jarak
+  });
+
+  kodeA.innerText = "KODE: " + code;
+  areaA.querySelector("button").style.display = "none";
+}
 
 function start(){
   if(role.value !== "A") return alert("Hanya Peran A");
   if(!petugas.value.trim()) return alert("Isi nama petugas");
 
-
   ref.once("value").then(snap=>{
     const d = snap.val();
-
-    if(!d || !d.pairing_code){
-      alert("Generate kode pairing dulu");
-      return;
-    }
-
-    if(d.status === "RUNNING"){
-      alert("Stopwatch sudah berjalan");
-      return;
-    }
+    if(!d || !d.pairing_code) return alert("Generate kode dulu");
+    if(d.status === "RUNNING") return alert("Sudah berjalan");
 
     ref.update({
       status: "RUNNING",
@@ -162,84 +203,72 @@ function start(){
   });
 }
 
-
-
 function stop(){
   if(role.value !== "B") return alert("Hanya Peran B");
-  if(!petugas.value.trim()) return alert("Isi nama petugas ");
-
+  if(!petugas.value.trim()) return alert("Isi nama petugas");
 
   ref.once("value").then(snap=>{
     const d = snap.val();
-    if(!d) return;
-
-    if(d.status !== "RUNNING"){
-      alert("Stopwatch belum berjalan");
-      return;
-    }
-
-    if(pairInput.value !== d.pairing_code){
-      alert("Kode pairing salah");
-      return;
-    }
+    if(!d || d.status !== "RUNNING") return alert("Belum berjalan");
+    if(pairInput.value !== d.pairing_code) return alert("Kode salah");
 
     ref.update({
       status: "STOPPED",
       stop_time: firebase.database.ServerValue.TIMESTAMP,
-      petugas_B: name.value
+      petugas_B: petugas.value.trim()
     });
   });
 }
 
-
-/* ================= REALTIME LISTENER ================= */
-
+/* ================= REALTIME ================= */
 ref.on("value", snap=>{
   const d = snap.val();
   if(!d) return;
 
-  document.getElementById("pairCode").innerText =
-    "Kode: " + (d.pairing_code || "-");
-
-  status.innerText = "Status: " + d.status;
+  statusEl.innerText = "Status: " + d.status;
 
   if(d.status === "RUNNING"){
     clearInterval(timer);
     timer = setInterval(()=>{
-      const now = Date.now();
-      const t = (now - d.start_time)/1000;
-      time.innerText = t.toFixed(3);
+      timeEl.innerText =
+        ((Date.now() - d.start_time)/1000).toFixed(3);
     },50);
   }
 
   if(d.status === "STOPPED"){
     clearInterval(timer);
-
     const dur = d.stop_time - d.start_time;
-    time.innerText = (dur/1000).toFixed(3);
+    timeEl.innerText = (dur/1000).toFixed(3);
 
-    const speedVal =
+    const speed =
       (d.distance_m/1000) / (dur/3600000);
-
-    speed.innerText = speedVal.toFixed(2) + " km/jam";
-
-    ref.update({ duration_ms: dur });
+    speedEl.innerText = speed.toFixed(2) + " km/jam";
   }
 
   if(d.status === "IDLE"){
     clearInterval(timer);
-    time.innerText = "0.000";
-    speed.innerText = "0 km/jam";
+    timeEl.innerText = "0.000";
+    speedEl.innerText = "0 km/jam";
   }
 });
-
 </script>
+
   <script>
 const roleSelect = document.getElementById("role");
 const areaA = document.getElementById("areaA");
 const areaB = document.getElementById("areaB");
 const kodeA = document.getElementById("kodeA");
 const petugas = document.getElementById("petugas");
+const role = document.getElementById("role");
+const petugas = document.getElementById("petugas");
+const distance = document.getElementById("distance");
+const pairInput = document.getElementById("pairInput");
+const statusEl = document.getElementById("status");
+const timeEl = document.getElementById("time");
+const speedEl = document.getElementById("speed");
+const areaA = document.getElementById("areaA");
+const areaB = document.getElementById("areaB");
+const kodeA = document.getElementById("kodeA");
 
 function updateRoleUI(){
   if(roleSelect.value === "A"){
@@ -259,17 +288,20 @@ function generateCode(){
   if(role.value !== "A") return;
   if(!petugas.value.trim()) return alert("Isi nama petugas A");
 
+  const jarak = Number(distance.value);
+  if(!jarak || jarak <= 0) return alert("Jarak tidak valid");
+
   const code = Math.random().toString(36).substring(2,6).toUpperCase();
 
   ref.set({
     status: "IDLE",
     pairing_code: code,
-    petugas_A: petugas.value,
+    petugas_A: petugas.value.trim(),
     petugas_B: "",
     start_time: 0,
     stop_time: 0,
     duration_ms: 0,
-    distance_m: Number(distance.value)
+    distance_m: jarak
   });
 
   kodeA.innerText = "KODE: " + code;
