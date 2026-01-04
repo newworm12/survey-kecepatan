@@ -106,14 +106,16 @@ button{font-weight:600;cursor:pointer}
 <body>
 <div class="wrapper">
   
-<div class="distance-field">
-  <input id="distance" type="number" value="50">
-  <span class="unit">Meter</span>
-</div>
 
 
 <!-- ===== CONTROL BAR ===== -->
 <div id="controlBar" class="control">
+  
+  <div class="distance-field">
+    <input id="distance" type="number" value="50">
+    <span class="unit">Meter</span>
+  </div>
+  
   <select id="role">
     <option value="A">Petugas A (START)</option>
     <option value="B">Petugas B (STOP)</option>
@@ -228,19 +230,20 @@ function activate(){
 
   // ===== KONTROL TOMBOL START / STOP =====
 if(d.status === "IDLE"){
-  btnStart.disabled = false;
+  btnStart.disabled = role.value !== "A";
   btnStop.disabled  = true;
 }
 
 if(d.status === "RUNNING"){
   btnStart.disabled = true;
-  btnStop.disabled  = false;
+  btnStop.disabled  = role.value !== "B";
 }
 
 if(d.status === "STOPPED"){
   btnStart.disabled = true;
   btnStop.disabled  = true;
 }
+
 
 });
 
