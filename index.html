@@ -108,26 +108,25 @@
 <!-- AREA A -->
 <div id="areaA" style="display:none">
   <button onclick="generateCode()">Generate Kode (A)</button>
-  <div class="status" id="kodeA"></div>
+  <div id="kodeA"></div>
 </div>
 
 <!-- AREA B -->
 <div id="areaB" style="display:none">
-  <input id="pairInput" placeholder="Masukkan Kode (B)">
+  <input id="pairInput">
   <button onclick="pairAsB()">PAIR (B)</button>
 </div>
 
-<input id="distance" type="number" value="50" placeholder="Jarak (meter)">
+<input id="distance" type="number" value="50">
 
-<!-- STOPWATCH (SATU-SATUNYA) -->
 <div id="stopwatch" class="stopwatch locked">
-  <div class="time" id="time">0.000</div>
-  <div class="speed" id="speed">0 km/jam</div>
-  <button class="start" onclick="start()">START</button>
-  <button class="stop" onclick="stop()">STOP</button>
+  <div id="time">0.000</div>
+  <div id="speed">0 km/jam</div>
+  <button onclick="start()">START</button>
+  <button onclick="stop()">STOP</button>
 </div>
 
-<div class="status" id="status">Status: IDLE</div>
+<div id="status">Status: IDLE</div>
 
   
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -165,7 +164,7 @@ role.onchange = () => {
   areaA.style.display = role.value === "A" ? "block" : "none";
   areaB.style.display = role.value === "B" ? "block" : "none";
 };
-
+role.onchange(); // ← INI KUNCINYA
 /* ========= ACTION ========= */
 window.generateCode = () => {
   if (!petugas.value.trim()) return alert("Isi nama A");
