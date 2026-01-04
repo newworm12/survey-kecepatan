@@ -181,6 +181,8 @@ button{font-weight:600;cursor:pointer}
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbw9cbqL4_UJR1Ox7c0k9TO8pIonsrtH6k-wJ5hpmdW1ml1FH-MLoeaC3w2MfNjoCFcW/exec";
+
 firebase.initializeApp({
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -406,6 +408,43 @@ if (d.status === "STOPPED") {
 // ✅ INI YANG KURANG
 
 
+function exportToCSV(data) {
+  const header = [
+    "Tanggal",
+    "Jam",
+    "Session ID",
+    "Surveyor",
+    "Kendaraan",
+    "Jarak (m)",
+    "Waktu (detik)",
+    "Kecepatan (km/jam)"
+  ];
+
+  const row = [
+    data.tanggal,
+    data.jam,
+    data.sessionId,
+    data.surveyor,
+    data.vehicle,
+    data.distance,
+    data.duration,
+    data.speed
+  ];
+
+  const csv = [header, row]
+    .map(r => r.join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "survey_kecepatan.csv";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
 
 
 /* ===== START ===== */
@@ -460,11 +499,44 @@ function start(){
 function stop(){
   if(role.value !== "B") return alert("STOP hanya Petugas B");
 
-  db.ref("sessions/"+sessionId).update({
-    status: "STOPPED",
-    stop_time: firebase.database.ServerValue.TIMESTAMP
+  const stopTime = Date.now();
+
+  db.ref("sessions/"+sessionId).once("value").then(s => {
+    const d = s.val();
+    if (!d || !d.start_time) return;
+
+    const durMs = stopTime - d.start_time;
+    const durSec = (durMs / 1000).toFixed(3);
+    const speed = ((d.distance / 1000) / (durMs / 3600000)).toFixed(2);
+
+    const now = new Date();
+
+    const payload = {
+      tanggal: now.toLocaleDateString("id-ID"),
+      jam: now.toLocaleTimeString("id-ID"),
+      sessionId: sessionId,
+      surveyor: surveyorInput.value.trim(),
+      vehicle: d.vehicle,
+      distance: d.distance,
+      duration: durSec,
+      speed: speed
+    };
+
+    // kirim ke Google Sheets
+    fetch(SHEET_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    // update Firebase status
+    db.ref("sessions/"+sessionId).update({
+      status: "STOPPED",
+      stop_time: stopTime
+    });
   });
 }
+
 
 
   /* ===== RESET ===== */
