@@ -94,7 +94,9 @@ firebase.initializeApp({
 });
 const ref = firebase.database().ref("survey_speed");
 
-const role = document.getElementById("role");
+const role = document.getElementById("role");const areaA = document.getElementById("areaA");
+const areaB = document.getElementById("areaB");
+const distance = document.getElementById("distance");
 const nama = document.getElementById("nama");
 const kodeDiv = document.getElementById("kode");
 const kodeInput = document.getElementById("kodeInput");
@@ -130,6 +132,7 @@ function generateCode(){
 
 /* ===== B PAIR ===== */
 function pairB(){
+  alert("PAIR DIKLIK");
   if(!nama.value||!kodeInput.value) return alert("Lengkapi data");
   ref.once("value").then(s=>{
     const d=s.val();
