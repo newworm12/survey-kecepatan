@@ -131,6 +131,14 @@ button{font-weight:600;cursor:pointer}
       <option value="A">Petugas A (START)</option>
       <option value="B">Petugas B (STOP)</option>
     </select>
+<!-- Jenis Kendaraan -->
+<select id="vehicleType">
+  <option value="">Pilih Jenis Kendaraan</option>
+  <option value="SM">SM – Sepeda Motor</option>
+  <option value="MP">MP – Mobil Penumpang</option>
+  <option value="KB">KB – Kendaraan Berat</option>
+  <option value="KTB">KTB – Kendaraan Tak Bermotor</option>
+</select>
 
     <!-- A -->
     <div id="areaA">
@@ -155,9 +163,14 @@ button{font-weight:600;cursor:pointer}
   <button id="btnStart" class="start" onclick="start()">START</button>
   <button id="btnStop" class="stop" onclick="stop()">STOP</button>
 
+  <div id="status">Status: -</div>
+ <div id="vehicleInfo" style="margin-top:6px;color:#aaa"></div>
+
 
   <div id="status">Status: -</div>
 </div>
+
+
 <button onclick="resetSession()" style="background:#ff9800;color:#000">
   RESET
 </button>
@@ -179,7 +192,8 @@ const db = firebase.database();
 
 const btnStart = document.getElementById("btnStart");
 const btnStop  = document.getElementById("btnStop");
-
+const vehicleSelect = document.getElementById("vehicleType");
+const vehicleInfo = document.getElementById("vehicleInfo");
 const role=document.getElementById("role");
 const areaA=document.getElementById("areaA");
 const areaB=document.getElementById("areaB");
@@ -215,12 +229,19 @@ function createSession(){
 
   sessionId = Math.random().toString(36).substr(2,6);
 
-  db.ref("sessions/" + sessionId).set({
-    distance: dist,
-    status: "IDLE",
-    start_time: 0,
-    stop_time: 0
-  });
+  if (!vehicleSelect.value) {
+  alert("Pilih jenis kendaraan");
+  return;
+}
+
+db.ref("sessions/" + sessionId).set({
+  distance: dist,
+  vehicle: vehicleSelect.value,
+  status: "IDLE",
+  start_time: 0,
+  stop_time: 0
+});
+
 
   document.getElementById("sessionCode").innerText =
     "SESSION ID: " + sessionId;
@@ -250,6 +271,9 @@ function activate(){
     if (!d) return;
 
     statusEl.innerText = "Status: " + d.status;
+    if (d.vehicle) {
+    vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
+   }
 
     if (d.status === "IDLE") {
       running = false;
