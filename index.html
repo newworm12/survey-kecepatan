@@ -332,29 +332,6 @@ function activate(){
 
 
     // ===== LOGIKA cancel =====
-    function cancelLast() {
-  if (!lastRecordId) {
-    alert("Tidak ada data yang bisa dibatalkan");
-    return;
-  }
-
-  const ok = confirm("Batalkan data terakhir?");
-  if (!ok) return;
-
-  const payload = {
-    action: "cancel",
-    recordId: lastRecordId
-  };
-
-  navigator.sendBeacon(
-    SHEET_API_URL,
-    new URLSearchParams(payload)
-  );
-
-  alert("Data terakhir dibatalkan");
-
-  lastRecordId = null;
-}
 
     // ===== LOGIKA TIMER =====
 // ===== LOGIKA TIMER (SUMBER TUNGGAL DARI FIREBASE) =====
@@ -396,7 +373,29 @@ if (d.status === "RUNNING") {
   }
 }
 
+ function cancelLast() {
+  if (!lastRecordId) {
+    alert("Tidak ada data yang bisa dibatalkan");
+    return;
+  }
 
+  const ok = confirm("Batalkan data terakhir?");
+  if (!ok) return;
+
+  const payload = {
+    action: "cancel",
+    recordId: lastRecordId
+  };
+
+  navigator.sendBeacon(
+    SHEET_API_URL,
+    new URLSearchParams(payload)
+  );
+
+  alert("Data terakhir dibatalkan");
+
+  lastRecordId = null;
+}
   // 🚫 JANGAN start timer dari listener untuk Petugas A
   if (role.value === "A") return;
 
@@ -533,6 +532,9 @@ function stop(){
 
   const stopTime = Date.now();
 
+  const recordId = sessionId + "-" + stopTime;
+  lastRecordId = recordId;
+
   db.ref("sessions/"+sessionId).once("value").then(s => {
     const d = s.val();
     if (!d || !d.start_time) return;
@@ -544,23 +546,19 @@ function stop(){
     const now = new Date();
 
     const payload = {
-    tanggal: now.toLocaleDateString("id-ID"),
-    jam: now.toLocaleTimeString("id-ID"),
-    sessionId: sessionId,
-    surveyor: surveyorInput.value.trim(),
-    vehicle: d.vehicle,
-    distance: d.distance,
-    duration: durSec,
-    speed: speed,
-    recordId: recordId
+  tanggal: now.toLocaleDateString("id-ID"),
+  jam: now.toLocaleTimeString("id-ID"),
+  sessionId: sessionId,
+  surveyor: surveyorInput.value.trim(),
+  vehicle: d.vehicle,
+  distance: d.distance,
+  duration: durSec,
+  speed: speed,
+  recordId: recordId   // ✅ INI SEKARANG VALID
 };
 
 
-    // kirim ke Google Sheets
-    const formData = new FormData();
-Object.keys(payload).forEach(key => {
-  formData.append(key, payload[key]);
-});
+  
 
 const params = new URLSearchParams(payload);
 navigator.sendBeacon(
