@@ -23,7 +23,9 @@ body{
   padding:12px;
   border-radius:14px;
   margin-bottom:16px;
-  transition:.3s;
+  transition: background 0.4s ease;
+}
+
 }
 .control.active{
   background:#2e7d32;
@@ -57,25 +59,11 @@ button{font-weight:600;cursor:pointer}
   opacity:.35;
   pointer-events:none;
 }
-  .control{
-  background:#7a1c1c;
-  transition: background 0.4s ease;
-}
+  
 .control.active{
   background:#2e7d32;
 }
-  .distance-wrap{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.distance-wrap input{
-  flex:1;
-}
-.distance-wrap span{
-  color:#aaa;
-  font-size:14px;
-}
+  
 .distance-field{
   position: relative;
   margin-bottom: 8px;
@@ -116,39 +104,41 @@ button{font-weight:600;cursor:pointer}
 
 <body>
 <div class="wrapper">
-<div class="surveyor-field">
-  <input id="surveyor" type="text" placeholder="Nama Surveyor">
-</div>
 
-
-
-<!-- ===== CONTROL BAR ===== -->
-<div id="controlBar" class="control">
-  
-  <div class="distance-field">
-    <input id="distance" type="number" value="50">
-    <span class="unit">Meter</span>
-  </div>
-  
-  <select id="role">
-    <option value="A">Petugas A (START)</option>
-    <option value="B">Petugas B (STOP)</option>
-  </select>
-
- 
-
-  <!-- A -->
-  <div id="areaA">
-    <button onclick="createSession()">BUAT SESSION</button>
-    <div id="sessionCode"></div>
+  <!-- Nama Surveyor -->
+  <div class="surveyor-field">
+    <input id="surveyor" type="text" placeholder="Nama Surveyor">
   </div>
 
-  <!-- B -->
-  <div id="areaB" style="display:none">
-    <input id="joinInput" placeholder="Masukkan Session ID">
-    <button onclick="joinSession()">GABUNG SESSION</button>
+  <!-- CONTROL BAR -->
+  <div id="controlBar" class="control">
+
+    <!-- Jarak -->
+    <div class="distance-field">
+      <input id="distance" type="number" value="50">
+      <span class="unit">Meter</span>
+    </div>
+
+    <!-- Role -->
+    <select id="role">
+      <option value="A">Petugas A (START)</option>
+      <option value="B">Petugas B (STOP)</option>
+    </select>
+
+    <!-- A -->
+    <div id="areaA">
+      <button onclick="createSession()">BUAT SESSION</button>
+      <div id="sessionCode"></div>
+    </div>
+
+    <!-- B -->
+    <div id="areaB" style="display:none">
+      <input id="joinInput" placeholder="Masukkan Session ID">
+      <button onclick="joinSession()">GABUNG SESSION</button>
+    </div>
+
   </div>
-</div>
+
 
 <!-- ===== STOPWATCH ===== -->
 <div id="stopwatch" class="big locked">
