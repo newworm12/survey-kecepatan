@@ -23,7 +23,7 @@ body{
   border-radius:16px;
   padding:20px;
 }
-input,select,button{
+input,button{
   width:100%;
   height:44px;
   margin-bottom:10px;
@@ -35,17 +35,14 @@ button{
   font-weight:600;
   cursor:pointer;
 }
-.start{background:#4caf50}
+.start{background:#4caf50;color:#000}
 .stop{background:#f44336;color:#fff}
-.locked{
-  opacity:.35;
-  pointer-events:none;
-}
-#kode{
+.locked{opacity:.35;pointer-events:none}
+#sessionCode{
   background:#4caf50;
   color:#000;
-  padding:8px;
   text-align:center;
+  padding:8px;
   border-radius:8px;
   font-weight:bold;
 }
@@ -55,24 +52,15 @@ button{
 <body>
 <div class="card">
 
-<select id="role">
-  <option value="A">Peran A (START)</option>
-  <option value="B">Peran B (STOP)</option>
-</select>
+<h3>Survey Kecepatan</h3>
 
-<input id="nama" placeholder="Nama Petugas">
+<input id="distance" type="number" value="50" placeholder="Jarak (meter)">
 
-<div id="areaA">
-  <button onclick="generateCode()">Generate Kode</button>
-  <div id="kode"></div>
-</div>
+<button onclick="createSession()">BUAT SESSION</button>
+<div id="sessionCode"></div>
 
-<div id="areaB" style="display:none">
-  <input id="kodeInput" placeholder="Masukkan Kode">
-  <button onclick="pairB()">PAIR</button>
-</div>
-
-<input id="distance" type="number" value="50">
+<input id="joinInput" placeholder="Masukkan Session ID">
+<button onclick="joinSession()">GABUNG SESSION</button>
 
 <div id="stopwatch" class="locked">
   <h1 id="time">0.000</h1>
@@ -81,7 +69,8 @@ button{
   <button class="stop" onclick="stop()">STOP</button>
 </div>
 
-<div id="status">Status: IDLE</div>
+<div id="status">Status: -</div>
+
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -92,98 +81,86 @@ firebase.initializeApp({
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-const ref = firebase.database().ref("survey_speed");
 
-const role = document.getElementById("role");const areaA = document.getElementById("areaA");
-const areaB = document.getElementById("areaB");
-const distance = document.getElementById("distance");
-const nama = document.getElementById("nama");
-const kodeDiv = document.getElementById("kode");
-const kodeInput = document.getElementById("kodeInput");
+let sessionId = null;
+let timer = null;
+
+const db = firebase.database();
 const stopwatch = document.getElementById("stopwatch");
 const timeEl = document.getElementById("time");
 const speedEl = document.getElementById("speed");
 const statusEl = document.getElementById("status");
 
-let timer=null;
-
-role.onchange = ()=>{
-  areaA.style.display = role.value==="A"?"block":"none";
-  areaB.style.display = role.value==="B"?"block":"none";
-};
-role.onchange();
-
-/* ===== A GENERATE ===== */
-function generateCode(){
-  if(!nama.value) return alert("Isi nama A");
-  const code = Math.random().toString(36).substr(2,4).toUpperCase();
-  ref.set({
-    code,
-    paired:false,
-    A:nama.value,
-    B:"",
-    status:"IDLE",
-    start_time:0,
-    stop_time:0,
-    distance:Number(distance.value)
+/* ===== CREATE SESSION ===== */
+function createSession(){
+  sessionId = Math.random().toString(36).substr(2,6);
+  db.ref("sessions/"+sessionId).set({
+    distance: Number(distance.value),
+    status: "IDLE",
+    start_time: 0,
+    stop_time: 0
   });
-  kodeDiv.innerText="KODE: "+code;
+  document.getElementById("sessionCode").innerText =
+    "SESSION ID: "+sessionId;
+  listen();
 }
 
-/* ===== B PAIR ===== */
-function pairB(){
-  alert("PAIR DIKLIK");
-  if(!nama.value||!kodeInput.value) return alert("Lengkapi data");
-  ref.once("value").then(s=>{
-    const d=s.val();
-    if(!d) return alert("Belum ada A");
-    if(d.paired) return alert("Sudah paired");
-    if(kodeInput.value!==d.code) return alert("Kode salah");
-    ref.update({paired:true,B:nama.value});
+/* ===== JOIN SESSION ===== */
+function joinSession(){
+  sessionId = joinInput.value.trim();
+  if(!sessionId) return alert("Masukkan session ID");
+
+  db.ref("sessions/"+sessionId).once("value").then(s=>{
+    if(!s.exists()) return alert("Session tidak ada");
+    listen();
   });
 }
 
 /* ===== START ===== */
 function start(){
-  if(role.value!=="A") return;
-  ref.once("value").then(s=>{
-    const d=s.val();
-    if(!d.paired) return alert("Belum paired");
-    ref.update({status:"RUNNING",start_time:firebase.database.ServerValue.TIMESTAMP});
+  if(!sessionId) return;
+  db.ref("sessions/"+sessionId).update({
+    status:"RUNNING",
+    start_time: firebase.database.ServerValue.TIMESTAMP
   });
 }
 
 /* ===== STOP ===== */
 function stop(){
-  if(role.value!=="B") return;
-  ref.once("value").then(s=>{
-    const d=s.val();
-    if(d.status!=="RUNNING") return;
-    ref.update({status:"STOPPED",stop_time:firebase.database.ServerValue.TIMESTAMP});
+  if(!sessionId) return;
+  db.ref("sessions/"+sessionId).update({
+    status:"STOPPED",
+    stop_time: firebase.database.ServerValue.TIMESTAMP
   });
 }
 
 /* ===== REALTIME ===== */
-ref.on("value",s=>{
-  const d=s.val();
-  if(!d) return;
-  statusEl.innerText="Status: "+d.status;
-  stopwatch.classList.toggle("locked",!d.paired);
+function listen(){
+  stopwatch.classList.remove("locked");
 
-  if(d.status==="RUNNING"){
-    clearInterval(timer);
-    timer=setInterval(()=>{
-      timeEl.innerText=((Date.now()-d.start_time)/1000).toFixed(3);
-    },50);
-  }
+  db.ref("sessions/"+sessionId).on("value",s=>{
+    const d = s.val();
+    if(!d) return;
 
-  if(d.status==="STOPPED"){
-    clearInterval(timer);
-    const dur=d.stop_time-d.start_time;
-    timeEl.innerText=(dur/1000).toFixed(3);
-    speedEl.innerText=((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
-  }
-});
+    statusEl.innerText = "Status: "+d.status;
+
+    if(d.status==="RUNNING"){
+      clearInterval(timer);
+      timer = setInterval(()=>{
+        timeEl.innerText =
+          ((Date.now()-d.start_time)/1000).toFixed(3);
+      },50);
+    }
+
+    if(d.status==="STOPPED"){
+      clearInterval(timer);
+      const dur = d.stop_time - d.start_time;
+      timeEl.innerText = (dur/1000).toFixed(3);
+      speedEl.innerText =
+        ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
+    }
+  });
+}
 </script>
 </body>
 </html>
