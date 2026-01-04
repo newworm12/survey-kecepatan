@@ -9,9 +9,10 @@
 <style>
 *,
 *::before,
-*::after{
+*::after {
   box-sizing: border-box;
 }
+
 
 body{
   margin:0;
@@ -288,9 +289,44 @@ function activate(){
     }
 
     // ===== LOGIKA TIMER =====
-    if (d.status === "IDLE") { ... }
-    if (d.status === "RUNNING") { ... }
-    if (d.status === "STOPPED") { ... }
+    // ===== LOGIKA TIMER =====
+// ===== LOGIKA TIMER (SUMBER TUNGGAL DARI FIREBASE) =====
+
+if (d.status === "IDLE") {
+  clearInterval(timer);
+  timer = null;
+  timeEl.innerText = "0.000";
+  speedEl.innerText = "0 km/jam";
+  btnStart.disabled = role.value !== "A";
+  btnStop.disabled = true;
+}
+
+if (d.status === "RUNNING") {
+  btnStart.disabled = true;
+  btnStop.disabled = role.value !== "B";
+
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (!d.start_time) return;
+    const diff = Date.now() - d.start_time;
+    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
+  }, 50);
+}
+
+if (d.status === "STOPPED") {
+  clearInterval(timer);
+  timer = null;
+
+  const dur = d.stop_time - d.start_time;
+  timeEl.innerText = (dur / 1000).toFixed(3);
+  speedEl.innerText =
+    ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
+
+  btnStart.disabled = true;
+  btnStop.disabled = true;
+}
+
+
   });
 }
 // ✅ INI YANG KURANG
@@ -300,7 +336,7 @@ function activate(){
 
 /* ===== START ===== */
 function start(){
-  if(role.value !== "A") return alert("START hanya Petugas A");
+  if(role.value !== "A") return;
 
   db.ref("sessions/"+sessionId).update({
     status: "RUNNING",
@@ -309,11 +345,7 @@ function start(){
 }
 
 
-  db.ref("sessions/"+sessionId).update({
-    status: "RUNNING",
-    start_time: firebase.database.ServerValue.TIMESTAMP
-  });
-}
+
 
 
 
