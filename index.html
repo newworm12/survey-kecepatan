@@ -11,65 +11,89 @@ body{
   font-family:system-ui,sans-serif;
   background:#111;
   color:#fff;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
 }
-.card{
-  width:100%;
-  max-width:360px;
-  background:#1e1e1e;
-  border-radius:16px;
-  padding:20px;
+.wrapper{
+  max-width:380px;
+  margin:auto;
+  padding:16px;
 }
-input,button{
+.control{
+  background:#7a1c1c;
+  padding:12px;
+  border-radius:14px;
+  margin-bottom:16px;
+  transition:.3s;
+}
+.control.active{
+  background:#2e7d32;
+}
+select,input,button{
   width:100%;
-  height:44px;
-  margin-bottom:10px;
+  height:42px;
+  margin-bottom:8px;
   border-radius:10px;
   border:none;
   padding:0 10px;
 }
-button{
-  font-weight:600;
-  cursor:pointer;
+button{font-weight:600;cursor:pointer}
+.big{
+  background:#1e1e1e;
+  border-radius:18px;
+  padding:24px 16px;
+  text-align:center;
+}
+.time{
+  font-size:48px;
+  font-weight:bold;
+}
+.speed{
+  color:#ff9800;
+  margin-bottom:20px;
 }
 .start{background:#4caf50;color:#000}
 .stop{background:#f44336;color:#fff}
-.locked{opacity:.35;pointer-events:none}
-#sessionCode{
-  background:#4caf50;
-  color:#000;
-  text-align:center;
-  padding:8px;
-  border-radius:8px;
-  font-weight:bold;
+.locked{
+  opacity:.35;
+  pointer-events:none;
 }
 </style>
 </head>
 
 <body>
-<div class="card">
+<div class="wrapper">
 
-<h3>Survey Kecepatan</h3>
+<!-- ===== CONTROL BAR ===== -->
+<div id="controlBar" class="control">
+  <select id="role">
+    <option value="A">Petugas A (START)</option>
+    <option value="B">Petugas B (STOP)</option>
+  </select>
 
-<input id="distance" type="number" value="50" placeholder="Jarak (meter)">
+  <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
 
-<button onclick="createSession()">BUAT SESSION</button>
-<div id="sessionCode"></div>
+  <!-- A -->
+  <div id="areaA">
+    <button onclick="createSession()">BUAT SESSION</button>
+    <div id="sessionCode"></div>
+  </div>
 
-<input id="joinInput" placeholder="Masukkan Session ID">
-<button onclick="joinSession()">GABUNG SESSION</button>
-
-<div id="stopwatch" class="locked">
-  <h1 id="time">0.000</h1>
-  <div id="speed">0 km/jam</div>
-  <button class="start" onclick="start()">START</button>
-  <button class="stop" onclick="stop()">STOP</button>
+  <!-- B -->
+  <div id="areaB" style="display:none">
+    <input id="joinInput" placeholder="Masukkan Session ID">
+    <button onclick="joinSession()">GABUNG SESSION</button>
+  </div>
 </div>
 
-<div id="status">Status: -</div>
+<!-- ===== STOPWATCH ===== -->
+<div id="stopwatch" class="big locked">
+  <div class="time" id="time">0.000</div>
+  <div class="speed" id="speed">0 km/jam</div>
+
+  <button class="start" onclick="start()">START</button>
+  <button class="stop" onclick="stop()">STOP</button>
+
+  <div id="status">Status: -</div>
+</div>
 
 </div>
 
@@ -82,91 +106,97 @@ firebase.initializeApp({
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
 
-let sessionId = null;
-let timer = null;
-
 const db = firebase.database();
-const stopwatch = document.getElementById("stopwatch");
-const timeEl = document.getElementById("time");
-const speedEl = document.getElementById("speed");
-const statusEl = document.getElementById("status");
+let sessionId=null,timer=null;
 
-/* ===== CREATE SESSION ===== */
+const role=document.getElementById("role");
+const areaA=document.getElementById("areaA");
+const areaB=document.getElementById("areaB");
+const controlBar=document.getElementById("controlBar");
+const stopwatch=document.getElementById("stopwatch");
+const timeEl=document.getElementById("time");
+const speedEl=document.getElementById("speed");
+const statusEl=document.getElementById("status");
+
+role.onchange=()=>{
+  areaA.style.display=role.value==="A"?"block":"none";
+  areaB.style.display=role.value==="B"?"block":"none";
+};
+role.onchange();
+
+/* ===== CREATE ===== */
 function createSession(){
-  sessionId = Math.random().toString(36).substr(2,6);
+  sessionId=Math.random().toString(36).substr(2,6);
   db.ref("sessions/"+sessionId).set({
-    distance: Number(distance.value),
-    status: "IDLE",
-    start_time: 0,
-    stop_time: 0
+    distance:Number(distance.value),
+    status:"IDLE",
+    start_time:0,
+    stop_time:0
   });
-  document.getElementById("sessionCode").innerText =
-    "SESSION ID: "+sessionId;
-  listen();
+  document.getElementById("sessionCode").innerText="SESSION ID: "+sessionId;
+  activate();
 }
 
-/* ===== JOIN SESSION ===== */
+/* ===== JOIN ===== */
 function joinSession(){
-  sessionId = joinInput.value.trim();
-  if(!sessionId) return alert("Masukkan session ID");
-
-  db.ref("sessions/"+sessionId).once("value").then(s=>{
+  const id=joinInput.value.trim();
+  if(!id) return alert("Masukkan session ID");
+  db.ref("sessions/"+id).once("value").then(s=>{
     if(!s.exists()) return alert("Session tidak ada");
-    listen();
+    sessionId=id;
+    activate();
   });
 }
 
-/* ===== START ===== */
-function start(){
-  if(!sessionId) return;
-  db.ref("sessions/"+sessionId).once("value").then(s=>{
-    if(s.val().status === "RUNNING") return;
-    db.ref("sessions/"+sessionId).update({
-      status:"RUNNING",
-      start_time: firebase.database.ServerValue.TIMESTAMP
-    });
-  });
-}
-
-
-/* ===== STOP ===== */
-function stop(){
-  if(!sessionId) return;
-  db.ref("sessions/"+sessionId).once("value").then(s=>{
-    if(s.val().status !== "RUNNING") return;
-    db.ref("sessions/"+sessionId).update({
-      status:"STOPPED",
-      stop_time: firebase.database.ServerValue.TIMESTAMP
-    });
-  });
-}
-
-
-/* ===== REALTIME ===== */
-function listen(){
+/* ===== ACTIVATE ===== */
+function activate(){
+  controlBar.classList.add("active");
   stopwatch.classList.remove("locked");
 
   db.ref("sessions/"+sessionId).on("value",s=>{
-    const d = s.val();
+    const d=s.val();
     if(!d) return;
 
-    statusEl.innerText = "Status: "+d.status;
+    statusEl.innerText="Status: "+d.status;
 
     if(d.status==="RUNNING"){
       clearInterval(timer);
-      timer = setInterval(()=>{
-        timeEl.innerText =
-          ((Date.now()-d.start_time)/1000).toFixed(3);
+      timer=setInterval(()=>{
+        timeEl.innerText=((Date.now()-d.start_time)/1000).toFixed(3);
       },50);
     }
 
     if(d.status==="STOPPED"){
       clearInterval(timer);
-      const dur = d.stop_time - d.start_time;
-      timeEl.innerText = (dur/1000).toFixed(3);
-      speedEl.innerText =
+      const dur=d.stop_time-d.start_time;
+      timeEl.innerText=(dur/1000).toFixed(3);
+      speedEl.innerText=
         ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
     }
+  });
+}
+
+/* ===== START ===== */
+function start(){
+  if(role.value!=="A") return alert("START hanya Petugas A");
+  db.ref("sessions/"+sessionId).once("value").then(s=>{
+    if(s.val().status==="RUNNING") return;
+    db.ref("sessions/"+sessionId).update({
+      status:"RUNNING",
+      start_time:firebase.database.ServerValue.TIMESTAMP
+    });
+  });
+}
+
+/* ===== STOP ===== */
+function stop(){
+  if(role.value!=="B") return alert("STOP hanya Petugas B");
+  db.ref("sessions/"+sessionId).once("value").then(s=>{
+    if(s.val().status!=="RUNNING") return;
+    db.ref("sessions/"+sessionId).update({
+      status:"STOPPED",
+      stop_time:firebase.database.ServerValue.TIMESTAMP
+    });
   });
 }
 </script>
