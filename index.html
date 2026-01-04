@@ -534,28 +534,7 @@ function stop(){
   speed: speed,
   recordId: recordId   // ✅ INI SEKARANG VALID
 };
-function cancelLast() {
-  if (!lastRecordId) {
-    alert("Tidak ada data yang bisa dibatalkan");
-    return;
-  }
 
-  const ok = confirm("Batalkan data terakhir?");
-  if (!ok) return;
-
-  const payload = {
-    action: "cancel",
-    recordId: lastRecordId
-  };
-
-  navigator.sendBeacon(
-    SHEET_API_URL,
-    new URLSearchParams(payload)
-  );
-
-  alert("Data terakhir dibatalkan");
-  lastRecordId = null;
-}
 
 
   
@@ -611,6 +590,29 @@ navigator.sendBeacon(
 
   btnStart.disabled = role.value !== "A";
   btnStop.disabled = true;
+}
+function cancelLast() {
+  if (!lastRecordId) {
+    alert("Tidak ada data yang bisa dibatalkan");
+    return;
+  }
+
+  const ok = confirm("Batalkan data terakhir?");
+  if (!ok) return;
+
+  const payload = {
+    action: "cancel",
+    recordId: lastRecordId
+  };
+
+  navigator.sendBeacon(
+    SHEET_API_URL,
+    new URLSearchParams(payload)
+  );
+
+  alert("Data terakhir dibatalkan");
+
+  lastRecordId = null;
 }
 
 
