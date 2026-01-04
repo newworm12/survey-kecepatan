@@ -275,48 +275,25 @@ function activate(){
     if (!d) return;
 
     statusEl.innerText = "Status: " + d.status;
+
+    // 🔽 TARUH DI SINI
     if (d.vehicle) {
-    vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
-   }
-
-    if (d.status === "IDLE") {
-      running = false;
-      clearInterval(timer);
-      timer = null;
-      timeEl.innerText = "0.000";
-      speedEl.innerText = "0 km/jam";
-      btnStart.disabled = role.value !== "A";
-      btnStop.disabled = true;
+      vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
     }
-
     if (d.status === "RUNNING") {
-  btnStart.disabled = true;
-  btnStop.disabled = role.value !== "B";
-
-  clearInterval(timer);
-  timer = setInterval(() => {
-    if (!d.start_time) return;
-    const diff = Date.now() - d.start_time;
-    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-  }, 50);
-}
-
-
-    if (d.status === "STOPPED") {
-      running = false;
-      clearInterval(timer);
-      timer = null;
-
-      const dur = d.stop_time - d.start_time;
-      timeEl.innerText = (dur / 1000).toFixed(3);
-      speedEl.innerText =
-        ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
-
-      btnStart.disabled = true;
-      btnStop.disabled = true;
+      vehicleSelect.disabled = true;
     }
+    if (d.status === "IDLE" && role.value === "A") {
+      vehicleSelect.disabled = false;
+    }
+
+    // ===== LOGIKA TIMER =====
+    if (d.status === "IDLE") { ... }
+    if (d.status === "RUNNING") { ... }
+    if (d.status === "STOPPED") { ... }
   });
-} // ✅ INI YANG KURANG
+}
+// ✅ INI YANG KURANG
 
 
 
@@ -325,26 +302,19 @@ function activate(){
 function start(){
   if(role.value !== "A") return alert("START hanya Petugas A");
 
-  // ⬅️ START UI LANGSUNG
-  localStartTime = Date.now();
-  running = true;
+  db.ref("sessions/"+sessionId).update({
+    status: "RUNNING",
+    start_time: firebase.database.ServerValue.TIMESTAMP
+  });
+}
 
-  // 🔥 JALANKAN TIMER SEKALI
-  if (!timer) {
-    timer = setInterval(updateTime, 50);
-  }
 
   db.ref("sessions/"+sessionId).update({
     status: "RUNNING",
     start_time: firebase.database.ServerValue.TIMESTAMP
   });
 }
-function updateTime(){
-  if (!running) return;
 
-  const diff = Date.now() - localStartTime;
-  timeEl.innerText = (diff / 1000).toFixed(3);
-}
 
 
 
@@ -364,31 +334,34 @@ function stop(){
   if(role.value !== "A")
     return alert("RESET hanya boleh oleh Petugas A");
 
-  if(!sessionId)
-    return;
+  if(!sessionId) return;
 
   const ok = confirm("Reset stopwatch?");
   if(!ok) return;
 
-  // reset data di Firebase (session TETAP)
   db.ref("sessions/" + sessionId).update({
     status: "IDLE",
     start_time: 0,
-    stop_time: 0
+    stop_time: 0,
+    vehicle: ""   // 🔥 RESET KENDARAAN
   });
 
-  // reset UI lokal
+  // reset UI
   clearInterval(timer);
+  timer = null;
   timeEl.innerText = "0.000";
   speedEl.innerText = "0 km/jam";
   statusEl.innerText = "Status: IDLE";
+  vehicleInfo.innerText = "";
 
-  // kontrol tombol
+  // buka lagi dropdown kendaraan utk Petugas A
+  if (role.value === "A") {
+    vehicleSelect.disabled = false;
+    vehicleSelect.value = "";
+  }
+
   btnStart.disabled = role.value !== "A";
-  btnStop.disabled  = true;
-
-  // ❌ JANGAN hapus active
-  // controlBar.classList.remove("active"); ← HAPUS
+  btnStop.disabled = true;
 }
 
 
