@@ -238,15 +238,16 @@ function activate(){
     }
 
     if(d.status === "RUNNING"){
-      btnStart.disabled = true;
-      btnStop.disabled  = role.value !== "B";
+  btnStart.disabled = true;
+  btnStop.disabled  = role.value !== "B";
 
-      clearInterval(timer);
-      timer = setInterval(() => {
-        timeEl.innerText =
-          ((Date.now() - d.start_time) / 1000).toFixed(3);
-      }, 50);
-    }
+  clearInterval(timer);
+  timer = setInterval(() => {
+    timeEl.innerText =
+      ((Date.now() - d.start_time) / 1000).toFixed(3);
+  }, 50);
+}
+
 
     if(d.status === "STOPPED"){
       btnStart.disabled = true;
@@ -288,25 +289,36 @@ function stop(){
 
   /* ===== RESET ===== */
   function resetSession(){
-  if(role.value!=="A")
+  if(role.value !== "A")
     return alert("RESET hanya boleh oleh Petugas A");
 
   if(!sessionId)
     return;
 
-  const ok = confirm("Yakin ingin reset stopwatch?");
+  const ok = confirm("Reset stopwatch?");
   if(!ok) return;
 
-  db.ref("sessions/"+sessionId).update({
-    status:"IDLE",
-    start_time:0,
-    stop_time:0
+  // reset data di Firebase (session TETAP)
+  db.ref("sessions/" + sessionId).update({
+    status: "IDLE",
+    start_time: 0,
+    stop_time: 0
   });
-btnStart.disabled = false;
-btnStop.disabled  = true;
-controlBar.classList.remove("active");
 
+  // reset UI lokal
+  clearInterval(timer);
+  timeEl.innerText = "0.000";
+  speedEl.innerText = "0 km/jam";
+  statusEl.innerText = "Status: IDLE";
+
+  // kontrol tombol
+  btnStart.disabled = role.value !== "A";
+  btnStop.disabled  = true;
+
+  // ❌ JANGAN hapus active
+  // controlBar.classList.remove("active"); ← HAPUS
 }
+
 
 </script>
 </body>
