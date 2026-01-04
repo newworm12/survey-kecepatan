@@ -94,7 +94,9 @@ button{font-weight:600;cursor:pointer}
 
   <div id="status">Status: -</div>
 </div>
-
+<button onclick="resetSession()" style="background:#ff9800;color:#000">
+  RESET
+</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -153,27 +155,36 @@ function activate(){
   controlBar.classList.add("active");
   stopwatch.classList.remove("locked");
 
-  db.ref("sessions/"+sessionId).on("value",s=>{
-    const d=s.val();
-    if(!d) return;
+  db.ref("sessions/"+sessionId).on("value", s => {
+  const d = s.val();
+  if(!d) return;
 
-    statusEl.innerText="Status: "+d.status;
+  statusEl.innerText="Status: "+d.status;
 
-    if(d.status==="RUNNING"){
-      clearInterval(timer);
-      timer=setInterval(()=>{
-        timeEl.innerText=((Date.now()-d.start_time)/1000).toFixed(3);
-      },50);
-    }
+  if(d.status==="RUNNING"){
+    clearInterval(timer);
+    timer=setInterval(()=>{
+      timeEl.innerText=((Date.now()-d.start_time)/1000).toFixed(3);
+    },50);
+  }
 
-    if(d.status==="STOPPED"){
-      clearInterval(timer);
-      const dur=d.stop_time-d.start_time;
-      timeEl.innerText=(dur/1000).toFixed(3);
-      speedEl.innerText=
-        ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
-    }
-  });
+  if(d.status==="STOPPED"){
+    clearInterval(timer);
+    const dur=d.stop_time-d.start_time;
+    timeEl.innerText=(dur/1000).toFixed(3);
+    speedEl.innerText=
+      ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
+  }
+
+  // ✅ INI RESET YANG KURANG
+  if(d.status==="IDLE"){
+    clearInterval(timer);
+    timeEl.innerText="0.000";
+    speedEl.innerText="0 km/jam";
+  }
+});
+
+  
 }
 
 /* ===== START ===== */
@@ -199,6 +210,25 @@ function stop(){
     });
   });
 }
+
+  /* ===== RESET ===== */
+  function resetSession(){
+  if(role.value!=="A")
+    return alert("RESET hanya boleh oleh Petugas A");
+
+  if(!sessionId)
+    return;
+
+  const ok = confirm("Yakin ingin reset stopwatch?");
+  if(!ok) return;
+
+  db.ref("sessions/"+sessionId).update({
+    status:"IDLE",
+    start_time:0,
+    stop_time:0
+  });
+}
+
 </script>
 </body>
 </html>
