@@ -528,10 +528,9 @@ Object.keys(payload).forEach(key => {
   formData.append(key, payload[key]);
 });
 
-fetch(SHEET_API_URL, {
-  method: "POST",
-  body: formData
-});
+const params = new URLSearchParams(payload);
+navigator.sendBeacon(SHEET_API_URL, params);
+
 
 
     // update Firebase status
