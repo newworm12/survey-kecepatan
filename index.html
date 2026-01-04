@@ -163,6 +163,14 @@ button{font-weight:600;cursor:pointer}
 
   <button id="btnStart" class="start" onclick="start()">START</button>
   <button id="btnStop" class="stop" onclick="stop()">STOP</button>
+  <button
+  id="btnCancel"
+  style="background:#9e9e9e;color:#000"
+  onclick="cancelLast()"
+>
+  CANCEL DATA TERAKHIR
+</button>
+
 
   <div id="status">Status: -</div>
  <div id="vehicleInfo" style="margin-top:6px;color:#aaa"></div>
@@ -192,7 +200,7 @@ let localStartTime = 0;
 let timer = null;
 let timerRunning = false;
 const db = firebase.database();
-
+let lastRecordId = null;
 const btnStart = document.getElementById("btnStart");
 const btnStop  = document.getElementById("btnStop");
 const vehicleSelect = document.getElementById("vehicleType");
@@ -323,7 +331,31 @@ function activate(){
   }
 
 
-    // ===== LOGIKA TIMER =====
+    // ===== LOGIKA cancel =====
+    function cancelLast() {
+  if (!lastRecordId) {
+    alert("Tidak ada data yang bisa dibatalkan");
+    return;
+  }
+
+  const ok = confirm("Batalkan data terakhir?");
+  if (!ok) return;
+
+  const payload = {
+    action: "cancel",
+    recordId: lastRecordId
+  };
+
+  navigator.sendBeacon(
+    SHEET_API_URL,
+    new URLSearchParams(payload)
+  );
+
+  alert("Data terakhir dibatalkan");
+
+  lastRecordId = null;
+}
+
     // ===== LOGIKA TIMER =====
 // ===== LOGIKA TIMER (SUMBER TUNGGAL DARI FIREBASE) =====
 
@@ -512,15 +544,17 @@ function stop(){
     const now = new Date();
 
     const payload = {
-      tanggal: now.toLocaleDateString("id-ID"),
-      jam: now.toLocaleTimeString("id-ID"),
-      sessionId: sessionId,
-      surveyor: surveyorInput.value.trim(),
-      vehicle: d.vehicle,
-      distance: d.distance,
-      duration: durSec,
-      speed: speed
-    };
+    tanggal: now.toLocaleDateString("id-ID"),
+    jam: now.toLocaleTimeString("id-ID"),
+    sessionId: sessionId,
+    surveyor: surveyorInput.value.trim(),
+    vehicle: d.vehicle,
+    distance: d.distance,
+    duration: durSec,
+    speed: speed,
+    recordId: recordId
+};
+
 
     // kirim ke Google Sheets
     const formData = new FormData();
@@ -529,7 +563,10 @@ Object.keys(payload).forEach(key => {
 });
 
 const params = new URLSearchParams(payload);
-navigator.sendBeacon(SHEET_API_URL, params);
+navigator.sendBeacon(
+  SHEET_API_URL,
+  new URLSearchParams(payload)
+);
 
 
 
