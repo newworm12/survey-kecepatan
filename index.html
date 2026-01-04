@@ -105,31 +105,30 @@
   <div class="status" id="kodeA" style="font-size:20px; font-weight:bold; margin-top:8px;"></div>
 </div>
 
+<!-- AREA A -->
+<div id="areaA" style="display:none">
+  <button onclick="generateCode()">Generate Kode (A)</button>
+  <div class="status" id="kodeA"></div>
+</div>
+
 <!-- AREA B -->
 <div id="areaB" style="display:none">
   <input id="pairInput" placeholder="Masukkan Kode (B)">
   <button onclick="pairAsB()">PAIR (B)</button>
 </div>
-<!-- STOPWATCH LAYER -->
+
+<input id="distance" type="number" value="50" placeholder="Jarak (meter)">
+
+<!-- STOPWATCH (SATU-SATUNYA) -->
 <div id="stopwatch" class="stopwatch locked">
   <div class="time" id="time">0.000</div>
   <div class="speed" id="speed">0 km/jam</div>
-
   <button class="start" onclick="start()">START</button>
   <button class="stop" onclick="stop()">STOP</button>
 </div>
 
+<div class="status" id="status">Status: IDLE</div>
 
-  <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
-
-  <div class="time" id="time">0.000</div>
-  <div class="speed" id="speed">0 km/jam</div>
-
-  <button class="start" onclick="start()">START</button>
-  <button class="stop" onclick="stop()">STOP</button>
-
-  <div class="status" id="status">Status: IDLE</div>
-</div>
   
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
