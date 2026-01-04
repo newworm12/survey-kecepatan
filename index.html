@@ -82,11 +82,15 @@
 
 <div class="card">
   <h2>Survey Kecepatan</h2>
-
+<div class="status" id="pairCode">Kode: -</div>
   <select id="role">
     <option value="A">Peran A (START)</option>
     <option value="B">Peran B (STOP)</option>
   </select>
+<input id="name" placeholder="Nama Petugas">
+
+<button onclick="generateCode()">Generate Kode (A)</button>
+<input id="pairInput" placeholder="Masukkan Kode (B)">
 
   <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
 
@@ -125,30 +129,67 @@ let timer = null;
 /* ================= BUTTON LOGIC ================= */
 
 function start(){
-  if(role.value !== "A") return alert("Hanya Peran A yang boleh START");
+  if(role.value !== "A") return alert("Hanya Peran A");
+  if(!name.value) return alert("Isi nama petugas");
 
-  ref.update({
-    status: "RUNNING",
-    start_time: firebase.database.ServerValue.TIMESTAMP,
-    stop_time: 0,
-    distance_m: Number(distance.value)
+  ref.once("value").then(snap=>{
+    const d = snap.val();
+
+    if(!d || !d.pairing_code){
+      alert("Generate kode pairing dulu");
+      return;
+    }
+
+    if(d.status === "RUNNING"){
+      alert("Stopwatch sudah berjalan");
+      return;
+    }
+
+    ref.update({
+      status: "RUNNING",
+      start_time: firebase.database.ServerValue.TIMESTAMP,
+      stop_time: 0
+    });
   });
 }
+
+
 
 function stop(){
-  if(role.value !== "B") return alert("Hanya Peran B yang boleh STOP");
+  if(role.value !== "B") return alert("Hanya Peran B");
+  if(!name.value) return alert("Isi nama petugas");
 
-  ref.update({
-    status: "STOPPED",
-    stop_time: firebase.database.ServerValue.TIMESTAMP
+  ref.once("value").then(snap=>{
+    const d = snap.val();
+    if(!d) return;
+
+    if(d.status !== "RUNNING"){
+      alert("Stopwatch belum berjalan");
+      return;
+    }
+
+    if(pairInput.value !== d.pairing_code){
+      alert("Kode pairing salah");
+      return;
+    }
+
+    ref.update({
+      status: "STOPPED",
+      stop_time: firebase.database.ServerValue.TIMESTAMP,
+      petugas_B: name.value
+    });
   });
 }
+
 
 /* ================= REALTIME LISTENER ================= */
 
 ref.on("value", snap=>{
   const d = snap.val();
   if(!d) return;
+
+  document.getElementById("pairCode").innerText =
+    "Kode: " + (d.pairing_code || "-");
 
   status.innerText = "Status: " + d.status;
 
@@ -165,12 +206,12 @@ ref.on("value", snap=>{
     clearInterval(timer);
 
     const dur = d.stop_time - d.start_time;
-    const t = dur/1000;
-    time.innerText = t.toFixed(3);
+    time.innerText = (dur/1000).toFixed(3);
 
-    const speed = (d.distance_m/1000) / (dur/3600000);
-    document.getElementById("speed").innerText =
-      speed.toFixed(2) + " km/jam";
+    const speedVal =
+      (d.distance_m/1000) / (dur/3600000);
+
+    speed.innerText = speedVal.toFixed(2) + " km/jam";
 
     ref.update({ duration_ms: dur });
   }
@@ -181,6 +222,30 @@ ref.on("value", snap=>{
     speed.innerText = "0 km/jam";
   }
 });
+
+</script>
+<script>
+function generateCode(){
+  if(role.value !== "A") return alert("Hanya Peran A");
+
+  if(!name.value) return alert("Isi nama petugas A");
+
+  const code = Math.random().toString(36).substring(2,6).toUpperCase();
+
+  ref.set({
+    status: "IDLE",
+    pairing_code: code,
+    petugas_A: name.value,
+    petugas_B: "",
+    start_time: 0,
+    stop_time: 0,
+    duration_ms: 0,
+    distance_m: Number(distance.value)
+  });
+
+  alert("Kode Pairing: " + code);
+}
+
 </script>
 
 </body>
