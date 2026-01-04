@@ -185,7 +185,7 @@ firebase.initializeApp({
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-  
+let sessionId = null;
 let localStartTime = 0;
 let timer = null;
 let timerRunning = false;
@@ -330,19 +330,9 @@ if (d.status === "RUNNING") {
   btnStart.disabled = true;
   btnStop.disabled = role.value !== "B";
 
-  // 🔒 SINKRON WAKTU (hanya maju)
-  if (d.start_time && d.start_time > localStartTime) {
-    localStartTime = d.start_time;
-  }
-
-  // 🚫 PETUGAS A JANGAN START TIMER DARI LISTENER
-  if (role.value === "A") return;
-
-  // ✅ PETUGAS B START TIMER DARI LISTENER
-  if (!timerRunning) {
+  if (!timerRunning && d.start_time) {
     timerRunning = true;
-
-    localStartTime = d.start_time || Date.now();
+    localStartTime = d.start_time;
 
     clearInterval(timer);
     timer = setInterval(() => {
@@ -351,6 +341,7 @@ if (d.status === "RUNNING") {
     }, 50);
   }
 }
+
 
 
 
@@ -384,14 +375,7 @@ function start(){
   if(role.value !== "A") return;
 
   // 🔥 mulai dari 0 langsung
-  localStartTime = Date.now();
-  timerRunning = true;
-
-  clearInterval(timer);
-  timer = setInterval(() => {
-    const diff = Date.now() - localStartTime;
-    timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-  }, 50);
+  
 
   db.ref("sessions/"+sessionId).update({
     status: "RUNNING",
