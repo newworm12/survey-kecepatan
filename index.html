@@ -7,6 +7,15 @@
 
 
 <style>
+  .stopwatch.locked{
+  opacity: 0.35;
+  pointer-events: none;
+}
+.control-ok{
+  background:#4caf50 !important;
+  color:#000 !important;
+}
+
   body{
     margin:0;
     font-family:system-ui, sans-serif;
@@ -101,6 +110,14 @@
   <input id="pairInput" placeholder="Masukkan Kode (B)">
   <button onclick="pairAsB()">PAIR (B)</button>
 </div>
+<!-- STOPWATCH LAYER -->
+<div id="stopwatch" class="stopwatch locked">
+  <div class="time" id="time">0.000</div>
+  <div class="speed" id="speed">0 km/jam</div>
+
+  <button class="start" onclick="start()">START</button>
+  <button class="stop" onclick="stop()">STOP</button>
+</div>
 
 
   <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
@@ -113,28 +130,21 @@
 
   <div class="status" id="status">Status: IDLE</div>
 </div>
-
-<!-- Firebase -->
+  
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-/* ================= FIREBASE ================= */
-const firebaseConfig = {
+/* ========= FIREBASE ========= */
+firebase.initializeApp({
   apiKey: "AIzaSyBbsJPQtHknhrmE9naA31l9uBC2Sb4XYL8",
   authDomain: "stopwatch-survey.firebaseapp.com",
   databaseURL: "https://stopwatch-survey-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "stopwatch-survey",
-  storageBucket: "stopwatch-survey.appspot.com",
-  messagingSenderId: "371372945922",
-  appId: "1:371372945922:web:3152188d2c86034e25ad1b"
-};
+  projectId: "stopwatch-survey"
+});
+const ref = firebase.database().ref("survey_speed");
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const ref = db.ref("survey_speed");
-
-/* ================= DOM ================= */
+/* ========= DOM ========= */
 const role = document.getElementById("role");
 const petugas = document.getElementById("petugas");
 const distance = document.getElementById("distance");
@@ -144,202 +154,123 @@ const areaA = document.getElementById("areaA");
 const areaB = document.getElementById("areaB");
 const kodeA = document.getElementById("kodeA");
 
+const stopwatch = document.getElementById("stopwatch");
 const statusEl = document.getElementById("status");
 const timeEl = document.getElementById("time");
 const speedEl = document.getElementById("speed");
 
 let timer = null;
 
-/* ================= ROLE UI ================= */
-function updateRoleUI(){
-  if(role.value === "A"){
-    areaA.style.display = "block";
-    areaB.style.display = "none";
-  } else {
-    areaA.style.display = "none";
-    areaB.style.display = "block";
-  }
-}
-role.addEventListener("change", updateRoleUI);
-updateRoleUI();
+/* ========= ROLE UI ========= */
+role.onchange = () => {
+  areaA.style.display = role.value === "A" ? "block" : "none";
+  areaB.style.display = role.value === "B" ? "block" : "none";
+};
 
-/* ================= ACTIONS ================= */
-function generateCode(){
-  if(role.value !== "A") return;
-  if(!petugas.value.trim()) return alert("Isi nama petugas A");
-
-  const jarak = Number(distance.value);
-  if(!jarak || jarak <= 0) return alert("Jarak tidak valid");
+/* ========= ACTION ========= */
+window.generateCode = () => {
+  if (!petugas.value.trim()) return alert("Isi nama A");
 
   const code = Math.random().toString(36).substring(2,6).toUpperCase();
-
   ref.set({
     pairing_code: code,
+    pairing_status: "OPEN",
     pair_A: petugas.value.trim(),
     pair_B: "",
-    pairing_status: "OPEN",
-    status: "IDLE",
-    start_time: 0,
-    stop_time: 0,
-    distance_m: jarak
+    distance_m: Number(distance.value),
+    status: "IDLE"
   });
 
   kodeA.innerText = "KODE: " + code;
-  areaA.querySelector("button").style.display = "none";
-}
-function pairAsB(){
-  if(role.value !== "B") return;
-  if(!petugas.value.trim()) return alert("Isi nama petugas B");
+  kodeA.classList.add("control-ok");
+};
 
-  ref.once("value").then(snap=>{
-    const d = snap.val();
-    if(!d) return;
+window.pairAsB = () => {
+  if (!petugas.value.trim()) return alert("Isi nama B");
 
-    if(d.pairing_status !== "OPEN")
-      return alert("Pairing sudah terkunci");
-
-    if(pairInput.value !== d.pairing_code)
-      return alert("Kode salah");
+  ref.once("value").then(s => {
+    const d = s.val();
+    if (d.pairing_status !== "OPEN") return alert("Pairing terkunci");
+    if (pairInput.value !== d.pairing_code) return alert("Kode salah");
 
     ref.update({
       pair_B: petugas.value.trim(),
       pairing_status: "LOCKED"
     });
-
-    alert("Pairing berhasil. Siap mulai.");
   });
-}
+};
 
-
-function start(){
-  if(role.value !== "A") return alert("Hanya Peran A");
-
-  ref.once("value").then(snap=>{
-    const d = snap.val();
-    if(!d) return;
-
-    if(d.pairing_status !== "LOCKED")
+window.start = () => {
+  ref.once("value").then(s => {
+    const d = s.val();
+    if (d.pairing_status !== "LOCKED")
       return alert("Pairing belum selesai");
-
-    if(d.status === "RUNNING")
-      return alert("Sudah berjalan");
 
     ref.update({
       status: "RUNNING",
       start_time: firebase.database.ServerValue.TIMESTAMP
     });
   });
-}
+};
 
 
-function stop(){
-  if(role.value !== "B") return alert("Hanya Peran B");
-  if(!petugas.value.trim()) return alert("Isi nama petugas");
-
-  ref.once("value").then(snap=>{
-    const d = snap.val();
-    if(!d || d.status !== "RUNNING") return alert("Belum berjalan");
-    if(pairInput.value !== d.pairing_code) return alert("Kode salah");
-
-    ref.update({
-      status: "STOPPED",
-      stop_time: firebase.database.ServerValue.TIMESTAMP,
-      petugas_B: petugas.value.trim()
-    });
+window.stop = () => {
+  ref.update({
+    status: "STOPPED",
+    stop_time: firebase.database.ServerValue.TIMESTAMP
   });
-}
+};
 
-/* ================= REALTIME ================= */
-ref.on("value", snap=>{
-  const d = snap.val();
-  if(!d) return;
+/* ========= REALTIME ========= */
+ref.on("value", s => {
+  const d = s.val();
+  if (!d) return;
 
   statusEl.innerText = "Status: " + d.status;
 
-  if(d.status === "RUNNING"){
-    clearInterval(timer);
-    timer = setInterval(()=>{
-      timeEl.innerText =
-        ((Date.now() - d.start_time)/1000).toFixed(3);
-    },50);
+  // Pairing selesai → aktifkan stopwatch
+  if (d.pairing_status === "LOCKED") {
+    stopwatch.classList.remove("locked");
+
+    // Bar B jadi hijau & terkunci
+    if (role.value === "B") {
+      areaB.classList.add("control-ok");
+    }
   }
 
-  if(d.status === "STOPPED"){
+  // Bar A hijau saat generate
+  if (d.pairing_status === "OPEN" && role.value === "A") {
+    kodeA.classList.add("control-ok");
+  }
+
+  // Stopwatch logic
+  if (d.status === "RUNNING") {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      timeEl.innerText =
+        ((Date.now() - d.start_time) / 1000).toFixed(3);
+    }, 50);
+  }
+
+  if (d.status === "STOPPED") {
     clearInterval(timer);
     const dur = d.stop_time - d.start_time;
-    timeEl.innerText = (dur/1000).toFixed(3);
-
-    const speed =
-      (d.distance_m/1000) / (dur/3600000);
-    speedEl.innerText = speed.toFixed(2) + " km/jam";
+    timeEl.innerText = (dur / 1000).toFixed(3);
+    speedEl.innerText =
+      ((d.distance_m / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
   }
 
-  if(d.status === "IDLE"){
+  if (d.status === "IDLE") {
     clearInterval(timer);
     timeEl.innerText = "0.000";
     speedEl.innerText = "0 km/jam";
   }
 });
-</script>
-
-  <script>
-const roleSelect = document.getElementById("role");
-const areaA = document.getElementById("areaA");
-const areaB = document.getElementById("areaB");
-const kodeA = document.getElementById("kodeA");
-const petugas = document.getElementById("petugas");
-const role = document.getElementById("role");
-const petugas = document.getElementById("petugas");
-const distance = document.getElementById("distance");
-const pairInput = document.getElementById("pairInput");
-const statusEl = document.getElementById("status");
-const timeEl = document.getElementById("time");
-const speedEl = document.getElementById("speed");
-const areaA = document.getElementById("areaA");
-const areaB = document.getElementById("areaB");
-const kodeA = document.getElementById("kodeA");
-
-function updateRoleUI(){
-  if(roleSelect.value === "A"){
-    areaA.style.display = "block";
-    areaB.style.display = "none";
-  } else {
-    areaA.style.display = "none";
-    areaB.style.display = "block";
-  }
-}
-
-roleSelect.addEventListener("change", updateRoleUI);
-updateRoleUI();
-</script>
-<script>
-function generateCode(){
-  if(role.value !== "A") return;
-  if(!petugas.value.trim()) return alert("Isi nama petugas A");
-
-  const jarak = Number(distance.value);
-  if(!jarak || jarak <= 0) return alert("Jarak tidak valid");
-
-  const code = Math.random().toString(36).substring(2,6).toUpperCase();
-
-  ref.set({
-    status: "IDLE",
-    pairing_code: code,
-    petugas_A: petugas.value.trim(),
-    petugas_B: "",
-    start_time: 0,
-    stop_time: 0,
-    duration_ms: 0,
-    distance_m: jarak
-  });
-
-  kodeA.innerText = "KODE: " + code;
-  areaA.querySelector("button").style.display = "none";
-}
-
-
 
 </script>
+
+<!-- Firebase -->
+
 
 </body>
 </html>
