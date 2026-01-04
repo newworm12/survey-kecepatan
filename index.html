@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Survey Kecepatan</title>
 
+
 <style>
 body{
   margin:0;
@@ -56,11 +57,37 @@ button{font-weight:600;cursor:pointer}
   opacity:.35;
   pointer-events:none;
 }
+  .control{
+  background:#7a1c1c;
+  transition: background 0.4s ease;
+}
+.control.active{
+  background:#2e7d32;
+}
+  .distance-wrap{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.distance-wrap input{
+  flex:1;
+}
+.distance-wrap span{
+  color:#aaa;
+  font-size:14px;
+}
+
+
 </style>
 </head>
 
 <body>
 <div class="wrapper">
+  
+<div class="distance-wrap">
+  <input id="distance" type="number" value="50">
+  <span>meter</span>
+</div>
 
 <!-- ===== CONTROL BAR ===== -->
 <div id="controlBar" class="control">
@@ -89,8 +116,9 @@ button{font-weight:600;cursor:pointer}
   <div class="time" id="time">0.000</div>
   <div class="speed" id="speed">0 km/jam</div>
 
-  <button class="start" onclick="start()">START</button>
-  <button class="stop" onclick="stop()">STOP</button>
+  <button id="btnStart" class="start" onclick="start()">START</button>
+  <button id="btnStop" class="stop" onclick="stop()">STOP</button>
+
 
   <div id="status">Status: -</div>
 </div>
@@ -110,6 +138,8 @@ firebase.initializeApp({
 
 const db = firebase.database();
 let sessionId=null,timer=null;
+const btnStart = document.getElementById("btnStart");
+const btnStop  = document.getElementById("btnStop");
 
 const role=document.getElementById("role");
 const areaA=document.getElementById("areaA");
@@ -161,27 +191,22 @@ function activate(){
 
   statusEl.innerText="Status: "+d.status;
 
-  if(d.status==="RUNNING"){
-    clearInterval(timer);
-    timer=setInterval(()=>{
-      timeEl.innerText=((Date.now()-d.start_time)/1000).toFixed(3);
-    },50);
-  }
+  // ===== KONTROL TOMBOL START / STOP =====
+if(d.status === "IDLE"){
+  btnStart.disabled = false;
+  btnStop.disabled  = true;
+}
 
-  if(d.status==="STOPPED"){
-    clearInterval(timer);
-    const dur=d.stop_time-d.start_time;
-    timeEl.innerText=(dur/1000).toFixed(3);
-    speedEl.innerText=
-      ((d.distance/1000)/(dur/3600000)).toFixed(2)+" km/jam";
-  }
+if(d.status === "RUNNING"){
+  btnStart.disabled = true;
+  btnStop.disabled  = false;
+}
 
-  // ✅ INI RESET YANG KURANG
-  if(d.status==="IDLE"){
-    clearInterval(timer);
-    timeEl.innerText="0.000";
-    speedEl.innerText="0 km/jam";
-  }
+if(d.status === "STOPPED"){
+  btnStart.disabled = true;
+  btnStop.disabled  = true;
+}
+
 });
 
   
@@ -227,6 +252,10 @@ function stop(){
     start_time:0,
     stop_time:0
   });
+btnStart.disabled = false;
+btnStop.disabled  = true;
+controlBar.classList.remove("active");
+
 }
 
 </script>
