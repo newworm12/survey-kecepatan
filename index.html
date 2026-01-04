@@ -99,7 +99,9 @@
 <!-- AREA B -->
 <div id="areaB" style="display:none">
   <input id="pairInput" placeholder="Masukkan Kode (B)">
+  <button onclick="pairAsB()">PAIR (B)</button>
 </div>
+
 
   <input id="distance" type="number" value="50" placeholder="Jarak (meter)">
 
@@ -172,36 +174,63 @@ function generateCode(){
   const code = Math.random().toString(36).substring(2,6).toUpperCase();
 
   ref.set({
-    status: "IDLE",
     pairing_code: code,
-    petugas_A: petugas.value.trim(),
-    petugas_B: "",
+    pair_A: petugas.value.trim(),
+    pair_B: "",
+    pairing_status: "OPEN",
+    status: "IDLE",
     start_time: 0,
     stop_time: 0,
-    duration_ms: 0,
     distance_m: jarak
   });
 
   kodeA.innerText = "KODE: " + code;
   areaA.querySelector("button").style.display = "none";
 }
-
-function start(){
-  if(role.value !== "A") return alert("Hanya Peran A");
-  if(!petugas.value.trim()) return alert("Isi nama petugas");
+function pairAsB(){
+  if(role.value !== "B") return;
+  if(!petugas.value.trim()) return alert("Isi nama petugas B");
 
   ref.once("value").then(snap=>{
     const d = snap.val();
-    if(!d || !d.pairing_code) return alert("Generate kode dulu");
-    if(d.status === "RUNNING") return alert("Sudah berjalan");
+    if(!d) return;
+
+    if(d.pairing_status !== "OPEN")
+      return alert("Pairing sudah terkunci");
+
+    if(pairInput.value !== d.pairing_code)
+      return alert("Kode salah");
+
+    ref.update({
+      pair_B: petugas.value.trim(),
+      pairing_status: "LOCKED"
+    });
+
+    alert("Pairing berhasil. Siap mulai.");
+  });
+}
+
+
+function start(){
+  if(role.value !== "A") return alert("Hanya Peran A");
+
+  ref.once("value").then(snap=>{
+    const d = snap.val();
+    if(!d) return;
+
+    if(d.pairing_status !== "LOCKED")
+      return alert("Pairing belum selesai");
+
+    if(d.status === "RUNNING")
+      return alert("Sudah berjalan");
 
     ref.update({
       status: "RUNNING",
-      start_time: firebase.database.ServerValue.TIMESTAMP,
-      stop_time: 0
+      start_time: firebase.database.ServerValue.TIMESTAMP
     });
   });
 }
+
 
 function stop(){
   if(role.value !== "B") return alert("Hanya Peran B");
