@@ -204,6 +204,17 @@ const timeEl=document.getElementById("time");
 const speedEl=document.getElementById("speed");
 const statusEl=document.getElementById("status");
 const surveyorInput = document.getElementById("surveyor");
+// ===== KONTROL AKTIF/TIDAK TOMBOL START =====
+function updateStartState() {
+  btnStart.disabled =
+    role.value !== "A" ||
+    !surveyorInput.value.trim() ||
+    !vehicleSelect.value;
+}
+surveyorInput.addEventListener("input", updateStartState);
+vehicleSelect.addEventListener("change", updateStartState);
+role.addEventListener("change", updateStartState);
+updateStartState();
 
 // ===== SINKRON GANTI KENDARAAN (PETUGAS A) =====
 vehicleSelect.addEventListener("change", () => {
@@ -399,8 +410,25 @@ if (d.status === "STOPPED") {
 
 /* ===== START ===== */
 function start(){
-  if(role.value !== "A") return;
+  if (role.value !== "A") return;
 
+  // ===== VALIDASI =====
+  const nama = surveyorInput.value.trim();
+  const kendaraan = vehicleSelect.value;
+
+  if (!nama) {
+    alert("Nama surveyor harus diisi");
+    surveyorInput.focus();
+    return;
+  }
+
+  if (!kendaraan) {
+    alert("Pilih jenis kendaraan terlebih dahulu");
+    vehicleSelect.focus();
+    return;
+  }
+
+  // ===== START TIMER (TANPA DELAY) =====
   localStartTime = Date.now();
   timerRunning = true;
 
@@ -408,13 +436,18 @@ function start(){
   timer = setInterval(() => {
     const diff = Date.now() - localStartTime;
     timeEl.innerText = (diff / 1000).toFixed(3);
-  }, 16); // 60 FPS
+  }, 16);
 
-  db.ref("sessions/"+sessionId).update({
+  // ===== KIRIM KE FIREBASE =====
+  db.ref("sessions/" + sessionId).update({
     status: "RUNNING",
-    start_time: localStartTime
+    start_time: localStartTime,
+    surveyor: nama,        // 🔥 SIMPAN NAMA (opsional tapi bagus)
+    vehicle: kendaraan     // 🔥 PASTIKAN TERSIMPAN
   });
 }
+
+
 
 
 
