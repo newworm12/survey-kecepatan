@@ -358,6 +358,9 @@ if (role.value === "B") {
       speedEl.innerText = "0 km/jam";
       btnStart.disabled = role.value !== "A";
       btnStop.disabled = true;
+
+  // 🔥 AKTIFKAN ULANG LISTENER UNTUK SESSION YANG SAMA
+  activate();
     }
 
     else if (d.status === "RUNNING") {
@@ -441,11 +444,11 @@ function start(){
 
   // ===== KIRIM KE FIREBASE =====
   db.ref("sessions/" + sessionId).update({
-    status: "RUNNING",
-    start_time: localStartTime,
-    surveyor: nama,        // 🔥 SIMPAN NAMA (opsional tapi bagus)
-    vehicle: kendaraan     // 🔥 PASTIKAN TERSIMPAN
-  });
+  status: "IDLE",
+  start_time: 0,
+  stop_time: 0
+});
+
 }
 
 
