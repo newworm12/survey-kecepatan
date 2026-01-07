@@ -271,12 +271,12 @@ role.onchange = () => {
   // 🔒 hanya A boleh ubah jarak
   document.getElementById("distance").disabled = role.value === "B";
 
-  // kendaraan tetap seperti sebelumnya
+  // 🔒 kendaraan hanya A
   vehicleSelect.disabled = role.value === "B";
 };
 
-};
 role.onchange();
+
 
 
 /* ===== CREATE ===== */
