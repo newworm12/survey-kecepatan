@@ -225,6 +225,7 @@ const speedEl=document.getElementById("speed");
 const statusEl=document.getElementById("status");
 const surveyorInput = document.getElementById("surveyor");
 let sessionListener = null;
+let lastStartTimeSeen = 0;
 
 // ===== KONTROL AKTIF/TIDAK TOMBOL START =====
 function updateStartState() {
@@ -365,31 +366,38 @@ if (role.value === "B") {
       btnStop.disabled = true;
 
  // ✅ IZINKAN A UBAH JARAK, B TETAP TERKUNCI
-  document.getElementById("distance").disabled = role.value === "B";
+      document.getElementById("distance").disabled = role.value === "B";
+      lastStartTimeSeen = 0;
+
 
     }
 
     else if (d.status === "RUNNING") {
 
-  // 🔒 KUNCI JARAK SAAT TIMER JALAN
+  // kunci jarak
   document.getElementById("distance").disabled = true;
 
   btnStart.disabled = true;
   btnStop.disabled = role.value !== "B";
 
+  // Petugas A pakai timer lokal
   if (role.value === "A") return;
 
-  if (!timerRunning && d.start_time > 0) {
-    timerRunning = true;
-    localStartTime = d.start_time;
+  // 🔥 HANYA restart timer jika start_time berubah
+  if (d.start_time > 0 && d.start_time !== lastStartTimeSeen) {
+    lastStartTimeSeen = d.start_time;
 
     clearInterval(timer);
+
+    localStartTime = d.start_time;
+
     timer = setInterval(() => {
       const diff = Date.now() - localStartTime;
-      timeEl.innerText = (diff / 1000).toFixed(3);
+      timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
     }, 50);
   }
 }
+
 
     else if (d.status === "STOPPED") {
       document.getElementById("distance").disabled = true;
@@ -405,6 +413,8 @@ if (role.value === "B") {
 
       btnStart.disabled = true;
       btnStop.disabled = true;
+      lastStartTimeSeen = 0;
+
     }
   };
 
