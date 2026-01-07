@@ -513,30 +513,15 @@ navigator.sendBeacon(
 
 
   /* ===== RESET ===== */
- function resetSession(){
-  if (role.value !== "A")
-    return alert("RESET hanya boleh oleh Petugas A");
+function resetSession(){
+  if (role.value !== "A") return;
 
-  if (!sessionId) return;
-
-  const ok = confirm("Reset stopwatch?");
-  if (!ok) return;
-
-  // 🔹 UPDATE FIREBASE (DATA SAJA)
   db.ref("sessions/" + sessionId).update({
     status: "IDLE",
     start_time: 0,
-    stop_time: 0,
-    vehicle: ""
+    stop_time: 0
   });
 
-  // 🔹 LEPAS LISTENER (DI LUAR update)
-  if (sessionListener) {
-    db.ref("sessions/" + sessionId).off("value", sessionListener);
-    sessionListener = null;
-  }
-
-  // 🔹 RESET UI
   clearInterval(timer);
   timer = null;
   timerRunning = false;
@@ -545,16 +530,11 @@ navigator.sendBeacon(
   timeEl.innerText = "0.000";
   speedEl.innerText = "0 km/jam";
   statusEl.innerText = "Status: IDLE";
-  vehicleInfo.innerText = "";
-
-  if (role.value === "A") {
-    vehicleSelect.disabled = false;
-    vehicleSelect.value = "";
-  }
 
   btnStart.disabled = role.value !== "A";
   btnStop.disabled = true;
 }
+
 
 function cancelLast() {
   if (!lastRecordId) {
