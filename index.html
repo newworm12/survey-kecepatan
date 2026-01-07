@@ -224,6 +224,8 @@ const timeEl=document.getElementById("time");
 const speedEl=document.getElementById("speed");
 const statusEl=document.getElementById("status");
 const surveyorInput = document.getElementById("surveyor");
+let sessionListener = null;
+
 // ===== KONTROL AKTIF/TIDAK TOMBOL START =====
 function updateStartState() {
   btnStart.disabled =
@@ -321,149 +323,90 @@ function activate(){
   controlBar.classList.add("active");
   stopwatch.classList.remove("locked");
 
-  db.ref("sessions/"+sessionId).on("value", s => {
-  const d = s.val();
-  if (!d) return;
-
-  statusEl.innerText = "Status: " + d.status;
-
-  // ===== INFO KENDARAAN (SINKRON A → B) =====
-  if (d.vehicle && d.vehicle !== "") {
-    vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
-  } else {
-    vehicleInfo.innerText = "Menunggu kendaraan dari Petugas A";
-  }
-  // 🔒 INI PENTING
-  if (role.value === "B") {
-    vehicleSelect.disabled = true;
-  } else {
-    vehicleSelect.disabled = d.status === "RUNNING";
+  if (sessionListener) {
+    db.ref("sessions/" + sessionId).off("value", sessionListener);
   }
 
+  sessionListener = s => {
+    const d = s.val();
+    if (!d) return;
 
-    // ===== LOGIKA cancel =====
+   statusEl.innerText = "Status: " + d.status;
 
-    // ===== LOGIKA TIMER =====
-// ===== LOGIKA TIMER (SUMBER TUNGGAL DARI FIREBASE) =====
+    if (d.vehicle) {
+  vehicleInfo.innerText = "Kendaraan: " + d.vehicle;
+} else {
+  vehicleInfo.innerText = "Menunggu kendaraan dari Petugas A";
+}
 
-if (d.status === "IDLE") {
-  clearInterval(timer);
-  timer = null;
-  timerRunning = false;
-
-  timeEl.innerText = "0.000";
-  speedEl.innerText = "0 km/jam";
-  btnStart.disabled = role.value !== "A";
-  btnStop.disabled = true;
+    // kunci kendaraan saat RUNNING
+if (role.value === "B") {
+  vehicleSelect.disabled = true;
+} else {
+  vehicleSelect.disabled = d.status === "RUNNING";
 }
 
 
-if (d.status === "RUNNING") {
-  btnStart.disabled = true;
-  btnStop.disabled = role.value !== "B";
+    // ===== TIMER STATE =====
+    if (d.status === "IDLE") {
+      clearInterval(timer);
+      timer = null;
+      timerRunning = false;
+      localStartTime = 0;
 
-  // sinkron waktu (hanya maju)
-  if (d.status === "RUNNING") {
-  btnStart.disabled = true;
-  btnStop.disabled = role.value !== "B";
+      timeEl.innerText = "0.000";
+      speedEl.innerText = "0 km/jam";
+      btnStart.disabled = role.value !== "A";
+      btnStop.disabled = true;
+    }
 
-  // Petugas A sudah jalan sendiri
-  if (role.value === "A") return;
+    else if (d.status === "RUNNING") {
+      btnStart.disabled = true;
+      btnStop.disabled = role.value !== "B";
 
-  // Petugas B ikut waktu dari A
-  if (!timerRunning && d.start_time) {
-    timerRunning = true;
-    localStartTime = d.start_time;
+      if (role.value === "A") return;
 
-    clearInterval(timer);
-    timer = setInterval(() => {
-      const diff = Date.now() - localStartTime;
-      timeEl.innerText = (diff / 1000).toFixed(3);
-    }, 16);
-  }
-}
+      if (!timerRunning && d.start_time > 0) {
+        timerRunning = true;
+        localStartTime = d.start_time;
 
- 
-  // 🚫 JANGAN start timer dari listener untuk Petugas A
-  if (role.value === "A") return;
+        clearInterval(timer);
+        timer = setInterval(() => {
+          const diff = Date.now() - localStartTime;
+          timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
+        }, 50);
+      }
+    }
 
-  // ✅ Petugas B start timer dari listener
-  if (!timerRunning && d.start_time) {
-    timerRunning = true;
-    localStartTime = d.start_time;
+    else if (d.status === "STOPPED") {
+      clearInterval(timer);
+      timer = null;
+      timerRunning = false;
+      localStartTime = 0;
 
-    clearInterval(timer);
-    timer = setInterval(() => {
-      const diff = Date.now() - localStartTime;
-      timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-    }, 50);
-  }
-}
+      const dur = d.stop_time - d.start_time;
+      timeEl.innerText = (dur / 1000).toFixed(3);
+      speedEl.innerText =
+        ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
 
+      btnStart.disabled = true;
+      btnStop.disabled = true;
+    }
+  };
 
-
-
-
-
-
-if (d.status === "STOPPED") {
-  clearInterval(timer);
-  timer = null;
-  timerRunning = false;
-
-
-  const dur = d.stop_time - d.start_time;
-  timeEl.innerText = (dur / 1000).toFixed(3);
-  speedEl.innerText =
-    ((d.distance / 1000) / (dur / 3600000)).toFixed(2) + " km/jam";
-
-  btnStart.disabled = true;
-  btnStop.disabled = true;
+  db.ref("sessions/" + sessionId).on("value", sessionListener);
 }
 
 
-  });
-}
-// ✅ INI YANG KURANG
 
 
-function exportToCSV(data) {
-  const header = [
-    "Tanggal",
-    "Jam",
-    "Session ID",
-    "Surveyor",
-    "Kendaraan",
-    "Jarak (m)",
-    "Waktu (detik)",
-    "Kecepatan (km/jam)"
-  ];
 
-  const row = [
-    data.tanggal,
-    data.jam,
-    data.sessionId,
-    data.surveyor,
-    data.vehicle,
-    data.distance,
-    data.duration,
-    data.speed
-  ];
 
-  const csv = [header, row]
-    .map(r => r.join(","))
-    .join("\n");
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "survey_kecepatan.csv";
-  a.click();
 
-  URL.revokeObjectURL(url);
-}
+
+
 
 
 /* ===== START ===== */
@@ -537,7 +480,7 @@ function stop(){
   tanggal: now.toLocaleDateString("id-ID"),
   jam: now.toLocaleTimeString("id-ID"),
   sessionId: sessionId,
-  surveyor: surveyorInput.value.trim(),
+  surveyor: d.surveyor || "",
   vehicle: d.vehicle,
   distance: d.distance,
   duration: durSec,
@@ -568,31 +511,40 @@ navigator.sendBeacon(
 
 
   /* ===== RESET ===== */
-  function resetSession(){
-  if(role.value !== "A")
+ function resetSession(){
+  if (role.value !== "A")
     return alert("RESET hanya boleh oleh Petugas A");
 
-  if(!sessionId) return;
+  if (!sessionId) return;
 
   const ok = confirm("Reset stopwatch?");
-  if(!ok) return;
+  if (!ok) return;
 
+  // 🔹 UPDATE FIREBASE (DATA SAJA)
   db.ref("sessions/" + sessionId).update({
     status: "IDLE",
     start_time: 0,
     stop_time: 0,
-    vehicle: ""   // 🔥 RESET KENDARAAN
+    vehicle: ""
   });
 
-  // reset UI
+  // 🔹 LEPAS LISTENER (DI LUAR update)
+  if (sessionListener) {
+    db.ref("sessions/" + sessionId).off("value", sessionListener);
+    sessionListener = null;
+  }
+
+  // 🔹 RESET UI
   clearInterval(timer);
   timer = null;
+  timerRunning = false;
+  localStartTime = 0;
+
   timeEl.innerText = "0.000";
   speedEl.innerText = "0 km/jam";
   statusEl.innerText = "Status: IDLE";
   vehicleInfo.innerText = "";
 
-  // buka lagi dropdown kendaraan utk Petugas A
   if (role.value === "A") {
     vehicleSelect.disabled = false;
     vehicleSelect.value = "";
@@ -601,6 +553,7 @@ navigator.sendBeacon(
   btnStart.disabled = role.value !== "A";
   btnStop.disabled = true;
 }
+
 function cancelLast() {
   if (!lastRecordId) {
     alert("Tidak ada data yang bisa dibatalkan");
