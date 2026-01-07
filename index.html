@@ -360,7 +360,7 @@ if (role.value === "B") {
       btnStop.disabled = true;
 
   // 🔥 AKTIFKAN ULANG LISTENER UNTUK SESSION YANG SAMA
-  activate();
+
     }
 
     else if (d.status === "RUNNING") {
@@ -416,24 +416,22 @@ if (role.value === "B") {
 function start(){
   if (role.value !== "A") return;
 
-  // ===== VALIDASI =====
   const nama = surveyorInput.value.trim();
   const kendaraan = vehicleSelect.value;
 
   if (!nama) {
     alert("Nama surveyor harus diisi");
-    surveyorInput.focus();
     return;
   }
-
   if (!kendaraan) {
-    alert("Pilih jenis kendaraan terlebih dahulu");
-    vehicleSelect.focus();
+    alert("Pilih jenis kendaraan");
     return;
   }
 
-  // ===== START TIMER (TANPA DELAY) =====
-  localStartTime = Date.now();
+  const startTime = Date.now();
+
+  // timer lokal A
+  localStartTime = startTime;
   timerRunning = true;
 
   clearInterval(timer);
@@ -442,14 +440,15 @@ function start(){
     timeEl.innerText = (diff / 1000).toFixed(3);
   }, 16);
 
-  // ===== KIRIM KE FIREBASE =====
+  // 🔥 STATUS HARUS RUNNING
   db.ref("sessions/" + sessionId).update({
-  status: "IDLE",
-  start_time: 0,
-  stop_time: 0
-});
-
+    status: "RUNNING",
+    start_time: startTime,
+    surveyor: nama,
+    vehicle: kendaraan
+  });
 }
+
 
 
 
