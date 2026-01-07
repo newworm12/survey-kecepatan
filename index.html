@@ -268,8 +268,13 @@ role.onchange = () => {
   areaA.style.display = role.value === "A" ? "block" : "none";
   areaB.style.display = role.value === "B" ? "block" : "none";
 
-  // 🔒 kunci kendaraan untuk Petugas B
+  // 🔒 hanya A boleh ubah jarak
+  document.getElementById("distance").disabled = role.value === "B";
+
+  // kendaraan tetap seperti sebelumnya
   vehicleSelect.disabled = role.value === "B";
+};
+
 };
 role.onchange();
 
@@ -359,29 +364,35 @@ if (role.value === "B") {
       btnStart.disabled = role.value !== "A";
       btnStop.disabled = true;
 
-  // 🔥 AKTIFKAN ULANG LISTENER UNTUK SESSION YANG SAMA
+ // ✅ IZINKAN A UBAH JARAK, B TETAP TERKUNCI
+  document.getElementById("distance").disabled = role.value === "B";
 
     }
 
     else if (d.status === "RUNNING") {
-      btnStart.disabled = true;
-      btnStop.disabled = role.value !== "B";
 
-      if (role.value === "A") return;
+  // 🔒 KUNCI JARAK SAAT TIMER JALAN
+  document.getElementById("distance").disabled = true;
 
-      if (!timerRunning && d.start_time > 0) {
-        timerRunning = true;
-        localStartTime = d.start_time;
+  btnStart.disabled = true;
+  btnStop.disabled = role.value !== "B";
 
-        clearInterval(timer);
-        timer = setInterval(() => {
-          const diff = Date.now() - localStartTime;
-          timeEl.innerText = Math.max(0, diff / 1000).toFixed(3);
-        }, 50);
-      }
-    }
+  if (role.value === "A") return;
+
+  if (!timerRunning && d.start_time > 0) {
+    timerRunning = true;
+    localStartTime = d.start_time;
+
+    clearInterval(timer);
+    timer = setInterval(() => {
+      const diff = Date.now() - localStartTime;
+      timeEl.innerText = (diff / 1000).toFixed(3);
+    }, 50);
+  }
+}
 
     else if (d.status === "STOPPED") {
+      document.getElementById("distance").disabled = true;
       clearInterval(timer);
       timer = null;
       timerRunning = false;
@@ -441,12 +452,21 @@ function start(){
   }, 16);
 
   // 🔥 STATUS HARUS RUNNING
-  db.ref("sessions/" + sessionId).update({
-    status: "RUNNING",
-    start_time: startTime,
-    surveyor: nama,
-    vehicle: kendaraan
-  });
+  const dist = Number(distance.value);
+
+if (!dist || dist <= 0) {
+  alert("Jarak tidak valid");
+  return;
+}
+
+db.ref("sessions/" + sessionId).update({
+  status: "RUNNING",
+  start_time: startTime,
+  surveyor: nama,
+  vehicle: kendaraan,
+  distance: dist   // 🔥 SIMPAN JARAK
+});
+
 }
 
 
